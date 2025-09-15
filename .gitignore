@@ -1,0 +1,53 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.next/
+.nuxt/
+.svelte-kit/
+.turbo/
+.cache/
+coverage/
+
+# Vite
+.vite/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Prisma
+**/prisma/*.db
+**/prisma/*.sqlite
+
+# Ignore generated Prisma client cache
+**/.prisma/
+
+# Logs
+logs
+*.log
+
+# Backend specific
+backend/dist/
+backend/node_modules/
+backend/.env
+
+# Frontend specific
+rfid-frontend/node_modules/
+rfid-frontend/dist/
+rfid-frontend/.env

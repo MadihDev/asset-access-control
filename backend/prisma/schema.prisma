@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  username     String           @unique
+  firstName    String
+  lastName     String
+  password     String
+  role         UserRole         @default(USER)
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  lastLoginAt  DateTime?
+  createdById  String?
+  accessLogs   AccessLog[]
+  auditLogs    AuditLog[]
+  rfidKeys     RFIDKey[]
+  permissions  UserPermission[]
+  createdBy    User?            @relation("UserCreator", fields: [createdById], references: [id])
+  createdUsers User[]           @relation("UserCreator")
+
+  @@map("users")
+}
+
+model City {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  country   String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  addresses Address[]
+
+  @@map("cities")
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  street    String
+  number    String
+  zipCode   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id])
+  locks     Lock[]
+
+  @@unique([street, number, zipCode, cityId])
+  @@map("addresses")
+}
+
+model Lock {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  deviceId    String           @unique
+  secretKey   String
+  lockType    LockType         @default(DOOR)
+  isActive    Boolean          @default(true)
+  isOnline    Boolean          @default(false)
+  lastSeen    DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  addressId   String
+  accessLogs  AccessLog[]
+  address     Address          @relation(fields: [addressId], references: [id])
+  permissions UserPermission[]
+
+  @@map("locks")
+}
+
+model RFIDKey {
+  id         String      @id @default(cuid())
+  cardId     String      @unique
+  name       String?
+  isActive   Boolean     @default(true)
+  issuedAt   DateTime    @default(now())
+  expiresAt  DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  userId     String
+  accessLogs AccessLog[]
+  user       User        @relation(fields: [userId], references: [id])
+
+  @@map("rfid_keys")
+}
+
+model UserPermission {
+  id        String    @id @default(cuid())
+  canAccess Boolean   @default(true)
+  validFrom DateTime  @default(now())
+  validTo   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  userId    String
+  lockId    String
+  lock      Lock      @relation(fields: [lockId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, lockId])
+  @@map("user_permissions")
+}
+
+model AccessLog {
+  id         String       @id @default(cuid())
+  accessType AccessType   @default(RFID_CARD)
+  result     AccessResult
+  timestamp  DateTime     @default(now())
+  deviceInfo Json?
+  metadata   Json?
+  userId     String?
+  rfidKeyId  String?
+  lockId     String
+  lock       Lock         @relation(fields: [lockId], references: [id])
+  rfidKey    RFIDKey?     @relation(fields: [rfidKeyId], references: [id])
+  user       User?        @relation(fields: [userId], references: [id])
+
+  @@map("access_logs")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  action     AuditAction
+  entityType String
+  entityId   String
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime    @default(now())
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model SystemConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  type  String @default("string")
+
+  @@map("system_config")
+}
+
+model NotificationTemplate {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  type      NotificationType
+  subject   String?
+  body      String
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("notification_templates")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SUPERVISOR
+  USER
+}
+
+enum LockType {
+  DOOR
+  GATE
+  CABINET
+  ROOM
+}
+
+enum AccessType {
+  RFID_CARD
+  MANUAL
+  EMERGENCY
+  MAINTENANCE
+}
+
+enum AccessResult {
+  GRANTED
+  DENIED_INVALID_CARD
+  DENIED_EXPIRED_CARD
+  DENIED_NO_PERMISSION
+  DENIED_INACTIVE_USER
+  DENIED_INACTIVE_LOCK
+  DENIED_TIME_RESTRICTION
+  ERROR_DEVICE_OFFLINE
+  ERROR_SYSTEM_FAILURE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  PERMISSION_GRANT
+  PERMISSION_REVOKE
+  ACCESS_ATTEMPT
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  PUSH
+  WEBHOOK
+}

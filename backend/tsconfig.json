@@ -8,5 +8,10 @@
     "skipLibCheck": true,
     "outDir": "dist"
   },
-  "include": ["src"]
+  "include": ["src", "prisma", "test-*.ts"],
+  "ts-node": {
+    "compilerOptions": {
+      "types": ["node"]
+    }
+  }
 }

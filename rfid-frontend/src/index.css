@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Optional: place custom layers using the new v4 syntax if needed */
+/* @layer utilities {
+  .content-auto {
+    content-visibility: auto;
+  }
+} */

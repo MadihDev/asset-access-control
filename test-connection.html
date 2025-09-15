@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backend Connection Test</title>
+</head>
+<body>
+    <h1>Backend Connection Test</h1>
+    <button onclick="testHealth()">Test Health Endpoint</button>
+    <button onclick="testLockAccess()">Test Lock Access Endpoint</button>
+    <div id="result"></div>
+
+    <script>
+        async function testHealth() {
+            const result = document.getElementById('result');
+            try {
+                const response = await fetch('http://localhost:5000/api/health');
+                const data = await response.json();
+                result.innerHTML = `<h3>Health Endpoint Response:</h3>
+                                  <p>Status: ${response.status}</p>
+                                  <p>Data: ${JSON.stringify(data, null, 2)}</p>`;
+            } catch (error) {
+                result.innerHTML = `<h3>Error:</h3><p>${error.message}</p>`;
+            }
+        }
+
+        async function testLockAccess() {
+            const result = document.getElementById('result');
+            try {
+                const response = await fetch('http://localhost:5000/api/lock/access-attempt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        lockId: 'test-lock-001',
+                        rfidCardId: 'test-card-123',
+                        secretKey: 'test-secret'
+                    })
+                });
+                const data = await response.json();
+                result.innerHTML = `<h3>Lock Access Endpoint Response:</h3>
+                                  <p>Status: ${response.status}</p>
+                                  <p>Data: ${JSON.stringify(data, null, 2)}</p>`;
+            } catch (error) {
+                result.innerHTML = `<h3>Error:</h3><p>${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
