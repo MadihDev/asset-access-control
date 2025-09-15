@@ -54,7 +54,7 @@ Note: the frontend lives in the `rfid-frontend/` folder.
 
 - [x] ESLint + Prettier configured
 - [x] TypeScript strict mode for frontend/back
-- [ ] CI workflow (lint, typecheck, test)
+ - [x] CI workflow (lint, typecheck, test)
 - [x] Environment templates (`.env.example`) up to date for both apps
  - [ ] README/docs updated for run, build, deploy
  - [x] Basic monitoring/health endpoints exposed
@@ -87,7 +87,7 @@ Note: the frontend lives in the `rfid-frontend/` folder.
 ---
 
 Quick Wins to do next:
-- CI: add GitHub Actions workflow for lint, typecheck, and tests.
+- CI: add GitHub Actions workflow for lint, typecheck, and tests. — done (.github/workflows/ci.yml)
 - Docs: update root README with run/seed/build steps, ports, and API overview.
 - Docker: add Dockerfile(s) and docker-compose for DB, API (5001), and frontend (5173).
 - Tests: add unit tests for services/controllers and key UI components.
