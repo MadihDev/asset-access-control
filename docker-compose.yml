@@ -1,0 +1,39 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: asset_access
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/asset_access
+      JWT_SECRET: devsecret
+      PORT: "5001"
+      NODE_ENV: production
+    depends_on:
+      - db
+    ports:
+      - "5001:5001"
+
+  frontend:
+    build:
+      context: ./rfid-frontend
+    environment:
+      # Build-time var (Vite inlines env at build). For dynamic base URL, serve via nginx envsubst or proxy through nginx.
+      VITE_API_URL: http://localhost:5001/api
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  db_data:

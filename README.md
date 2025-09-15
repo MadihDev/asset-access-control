@@ -106,3 +106,20 @@ Workflow: `.github/workflows/ci.yml`
 - Add Dockerfile(s) and `docker-compose.yml` for DB/API/Frontend
 - Add tests (backend services/controllers; frontend components/hooks)
 - Write API docs under `docs/api.md`
+
+## Docker
+
+Run the whole stack with Docker:
+
+```powershell
+docker compose up --build
+```
+
+Services:
+- PostgreSQL: `localhost:5432`
+- Backend API: `http://localhost:5001/api`
+- Frontend: `http://localhost:5173`
+
+Notes:
+- Backend container runs `prisma migrate deploy` automatically on start.
+- Frontend is built with `VITE_API_URL` set at build time; adjust in `docker-compose.yml` if needed.
