@@ -20,7 +20,7 @@ npm install
 ### 3. Environment Configuration
 ```bash
 # Update .env file with your database credentials
-DATABASE_URL="postgresql://postgres:your-password@localhost:5432/rfid_access_control"
+DATABASE_URL="postgresql://postgres:your-password@localhost:5433/rfid_access_control"
 JWT_SECRET="your-super-secure-jwt-secret"
 ```
 

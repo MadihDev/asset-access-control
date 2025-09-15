@@ -24,8 +24,8 @@ This checklist tracks what’s DONE vs NOT DONE to reach 100% completion, based 
  - [x] Audit logging of key actions (login, permission changes)
  - [x] Audit Logs API: list with filters and pagination (`GET /api/audit`)
 - [ ] WebSocket setup: connection/auth handlers, real-time access events
-- [ ] Dockerfile and docker-compose (DB, API, frontend, reverse proxy)
-- [ ] API docs (docs/api.md) with endpoints, params, and examples
+- [x] Dockerfile and docker-compose (DB, API, frontend)
+- [x] API docs (docs/api.md) with endpoints, params, and examples
 
 ## Frontend (Vite + React + Tailwind v4)
 
@@ -56,7 +56,7 @@ Note: the frontend lives in the `rfid-frontend/` folder.
 - [x] TypeScript strict mode for frontend/back
  - [x] CI workflow (lint, typecheck, test)
 - [x] Environment templates (`.env.example`) up to date for both apps
- - [ ] README/docs updated for run, build, deploy
+ - [x] README/docs updated for run, build, deploy
  - [x] Basic monitoring/health endpoints exposed
 
 ## Data & Security

@@ -68,7 +68,7 @@ Frontend:
 ## Environment
 
 Backend `.env` (see `backend/.env.example`):
-- `DATABASE_URL=postgresql://user:pass@localhost:5432/asset_access`
+- `DATABASE_URL=postgresql://user:pass@localhost:5433/asset_access`
 - `JWT_SECRET=...`
 - `PORT=5001` (optional; defaults to 5000 – we use 5001 locally)
 
@@ -116,7 +116,7 @@ docker compose up --build
 ```
 
 Services:
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `localhost:5433`
 - Backend API: `http://localhost:5001/api`
 - Frontend: `http://localhost:5173`
 
