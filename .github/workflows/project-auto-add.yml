@@ -1,0 +1,37 @@
+name: Auto-add to Project
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up GitHub CLI
+        uses: cli/cli-action@v2
+
+      - name: Add item to Project
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          if [ -z "$PROJECT_NUMBER" ]; then
+            echo "PROJECT_NUMBER repo variable is not set. Skipping." && exit 0
+          fi
+          ISSUE_URL=$(jq -r '.issue.html_url // .pull_request.html_url // empty' "$GITHUB_EVENT_PATH")
+          if [ -z "$ISSUE_URL" ]; then
+            echo "No issue/PR URL found in event. Skipping." && exit 0
+          fi
+          gh project item-add --owner "$OWNER" --number "$PROJECT_NUMBER" --url "$ISSUE_URL"

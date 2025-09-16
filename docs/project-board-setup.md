@@ -56,3 +56,16 @@ Requirements: Install GitHub CLI (https://cli.github.com/) and run `gh auth logi
 Notes
 - The script creates GitHub issues first, then adds each to the Project.
 - Re-running may create duplicates (by title); prefer running once and managing in the UI.
+
+## Automation: Auto-add new issues/PRs to the Project
+
+This repo includes a workflow `.github/workflows/project-auto-add.yml` that adds opened issues/PRs to your Project automatically using the GitHub CLI. To enable it:
+
+1) Get your Project number
+- Open the Project in GitHub → the URL ends with `/projects/<number>` or use `gh project list --owner <Owner> --format json`.
+
+2) Set repo variable
+- In GitHub: Settings → Secrets and variables → Variables → New repository variable
+- Name: `PROJECT_NUMBER`, Value: your project number (e.g., `3`)
+
+That’s it—new issues/PRs will be auto-added to the Project.
