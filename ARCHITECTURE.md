@@ -9,6 +9,8 @@ This document combines the target system design with a quick runtime snapshot of
 - Database: PostgreSQL 17 on `localhost:5433`, DB name `rfid_access_control`
 - ORM: Prisma 5 (client generated)
 - CSS: Tailwind CSS v4 with PostCSS pipeline
+ - Background jobs: Key expiry watcher auto-deactivates expired RFID keys
+	 - Env: `KEY_EXPIRY_JOB_INTERVAL_MS` (default 300000 ms = 5 minutes)
 
 ### Run commands (Windows PowerShell)
 
@@ -346,3 +348,93 @@ rfid-frontend/
 ├── vite.config.ts
 └── package.json
 ```
+
+---
+
+## Feature Design Addendum (City-aware Login, Dashboard, Keys, Roles)
+
+This section captures the newly introduced functional requirements and how they map to the data model, APIs, and runtime behavior.
+
+### 1) City-aware Login and Post-login Navigation
+
+- Login Inputs: City, Username, Password
+- Validation rules:
+	- `cityId` must reference an active City
+	- `username/password` checked for a user belonging to the selected `cityId`
+	- User must be active (`isActive = true`)
+- API Contract:
+	- `POST /api/auth/login` body: `{ username: string, password: string, cityId: string }`
+	- Success: `{ user, accessToken, refreshToken, expiresIn }`
+	- On success, the client stores `accessToken` and loads profile/permissions
+- City Directory:
+	- `GET /api/city` → returns active cities for the login dropdown
+	- Current deployment constraint: Only Netherlands cities are returned (country = "Netherlands")
+- Redirect after login:
+	- Client redirects the user to their assigned location(s) within the selected city (e.g., dashboard path filtered by `cityId` and user’s assignments).
+
+Data model notes:
+- `User.cityId` (nullable) relates users to the City they belong to
+- `City` → `Address` → `Lock` hierarchy already exists; this flow leverages it
+
+### 2) Dashboard by Location with Real-time Metrics
+
+Once authenticated, the dashboard shows the user’s location(s) for their city, along with live indicators:
+
+- Per location KPIs:
+	- Active Users: users with recent activity or holding a currently valid key (configurable definition, e.g., last activity within 15 minutes OR any non-expired key)
+	- Active Locks: locks flagged `isOnline = true` in the last health check/heartbeat
+	- Active Keys: keys with `isActive = true` and `expiresAt > now()` for that location
+- Data sources:
+	- `AccessLog` stream and lock health updates (future WebSocket)
+	- `RFIDKey` validity window (see section 3)
+- Suggested API/flow:
+	- `GET /api/dashboard?cityId=...` returns summary with lists and counts filtered by city (and narrowed by user role/assignments)
+	- Real-time: WebSocket channel broadcasting lock online/offline events, key assignment/revocation, and access attempts to subscribed clients (scoped by city or permission)
+
+### 3) Key & Lock Management
+
+- Associations:
+	- Each Lock may require a Key (RFID key) for access
+	- Each Key is assigned to a User
+- Key expiry/auto-disconnect:
+	- Keys automatically expire/disconnect after 6 hours
+	- Implementation:
+		- Store `expiresAt` on `RFIDKey` (already present) and/or on issued key sessions
+		- Enforce validity in access checks (deny when `expiresAt <= now()` or `isActive = false`)
+		- Background job (cron/scheduler) to mark expired keys inactive and notify clients via WebSocket
+- Admin controls:
+	- Revoke Key: set `isActive = false` (and optionally clear associations)
+	- Reassign Key: update `userId` and reset `issuedAt`/`expiresAt`
+- Suggested APIs (existing endpoints can be extended):
+	- `POST /api/rfid/assign` → assign key to user with optional `expiresAt` (default now + 6h)
+	- `POST /api/rfid/revoke` → revoke key immediately
+	- `GET /api/lock/...` and `GET /api/permission/...` already provide access-related lists
+
+### 4) System Roles & Access Scope
+
+- Roles:
+	- User: logs in and sees their assigned location(s) and locks; limited to their city
+	- Supervisor/Admin: can monitor all users, locks, and keys by city and by location
+- Enforcement:
+	- Role checks are applied in middleware (e.g., `requireManagerOrAbove`, `requireAdmin`)
+	- City scope: filter queries by `cityId` derived from user context or request
+	- UI honors scope by showing only allowed locations/locks and management actions
+
+### Contracts, Edge Cases, and Success Criteria
+
+Contracts:
+- Login request: `{ username, password, cityId }` → 200 OK with tokens and user profile; 401 for invalid creds/city
+- City list: `GET /api/city` → `{ success, data: City[] }`
+- Dashboard request: accepts `cityId` and returns filtered stats and lists
+
+Edge cases:
+- City is inactive → block login
+- User not assigned to the given city → invalid credentials
+- Key expired mid-session → subsequent access attempts denied; UI updates via WebSocket
+- Lock offline → access attempts may return device error; dashboard reflects status
+
+Success criteria:
+- User can log in only when selecting their correct city and valid credentials
+- Post-login, user sees only their city’s assigned location(s)
+- Dashboard reflects “Active Users/Locks/Keys” with near real-time updates
+- Admin can revoke/reassign keys; revoked/expired keys are enforced immediately

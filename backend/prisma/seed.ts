@@ -1,7 +1,7 @@
-import * as Prisma from '@prisma/client'
+import { PrismaClient, AccessType, AccessResult } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
-const prisma = new (Prisma as any).PrismaClient()
+const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Starting database seed...')
@@ -25,13 +25,13 @@ async function main() {
   await prisma.user.deleteMany()
 
   // Create cities
-  const cities = await prisma.city.createMany({
+  await prisma.city.createMany({
     data: [
-      { name: 'New York', country: 'USA' },
-      { name: 'London', country: 'UK' },
-      { name: 'Paris', country: 'France' },
-      { name: 'Berlin', country: 'Germany' },
-      { name: 'Tokyo', country: 'Japan' }
+      { name: 'Amsterdam', country: 'Netherlands' },
+      { name: 'Rotterdam', country: 'Netherlands' },
+      { name: 'The Hague', country: 'Netherlands' },
+      { name: 'Utrecht', country: 'Netherlands' },
+      { name: 'Eindhoven', country: 'Netherlands' }
     ],
     skipDuplicates: true
   })
@@ -79,7 +79,14 @@ async function main() {
   // Create users
   const hashedPassword = await bcrypt.hash('password123', 10)
   
-  const users = await prisma.user.createMany({
+  // Map demo users to specific cities for out-of-the-box city-aware login
+  const amsterdam = cityRecords.find((c) => c.name === 'Amsterdam')
+  const rotterdam = cityRecords.find((c) => c.name === 'Rotterdam')
+  const theHague = cityRecords.find((c) => c.name === 'The Hague')
+  const utrecht = cityRecords.find((c) => c.name === 'Utrecht')
+  const eindhoven = cityRecords.find((c) => c.name === 'Eindhoven')
+
+  await prisma.user.createMany({
     data: [
       {
         email: 'admin@example.com',
@@ -125,6 +132,21 @@ async function main() {
     skipDuplicates: true
   })
   console.log('✅ Created users')
+
+  // Assign users to cities
+  const userCityMap: Array<{ username: string; cityId: string | undefined }> = [
+    { username: 'admin', cityId: amsterdam?.id },
+    { username: 'manager', cityId: rotterdam?.id },
+    { username: 'supervisor', cityId: theHague?.id },
+    { username: 'user1', cityId: utrecht?.id },
+    { username: 'user2', cityId: eindhoven?.id }
+  ]
+  for (const uc of userCityMap) {
+    if (!uc.cityId) continue
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await prisma.user.update({ where: { username: uc.username }, data: { cityId: uc.cityId } as any })
+  }
+  console.log('✅ Assigned users to cities')
 
   // Get users and locks for relations
   const userRecords = await prisma.user.findMany()
@@ -184,8 +206,8 @@ async function main() {
     const randomDate = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) // Last 30 days
     
     accessLogs.push({
-      accessType: 'RFID_CARD',
-      result: Math.random() > 0.2 ? 'GRANTED' : 'DENIED_NO_PERMISSION', // 80% success rate
+      accessType: AccessType.RFID_CARD,
+      result: Math.random() > 0.2 ? AccessResult.GRANTED : AccessResult.DENIED_NO_PERMISSION, // 80% success rate
       timestamp: randomDate,
       userId: randomRfidKey.userId,
       rfidKeyId: randomRfidKey.id,
@@ -198,7 +220,7 @@ async function main() {
     })
   }
 
-  await prisma.accessLog.createMany({ data: accessLogs as any })
+  await prisma.accessLog.createMany({ data: accessLogs })
   console.log('✅ Created access logs')
 
   // Create system configuration
@@ -242,10 +264,11 @@ async function main() {
 
   console.log('🎉 Database seeding completed!')
   console.log('\n📋 Login Credentials:')
-  console.log('• Admin: admin@example.com / password123')
-  console.log('• Manager: manager@example.com / password123')
-  console.log('• Supervisor: supervisor@example.com / password123')
-  console.log('• User: user1@example.com / password123')
+  console.log('• Admin: username=admin, password=password123, city=Amsterdam')
+  console.log('• Manager: username=manager, password=password123, city=Rotterdam')
+  console.log('• Supervisor: username=supervisor, password=password123, city=The Hague')
+  console.log('• User 1: username=user1, password=password123, city=Utrecht')
+  console.log('• User 2: username=user2, password=password123, city=Eindhoven')
 }
 
 main()

@@ -1,21 +1,31 @@
-import { useState } from 'react' 
+import { useEffect, useState } from 'react' 
 import api from '../services/api'
 import type { AxiosError } from 'axios'
 import { useAuth } from '../hooks/useAuth'
 
 interface LoginForm {
-  email: string
+  username: string
   password: string
+  cityId: string
 }
 
 const Login: React.FC = () => {
   const { login } = useAuth()
-  const [formData, setFormData] = useState<LoginForm>({
-    email: '',
-    password: ''
-  })
+  const [formData, setFormData] = useState<LoginForm>({ username: '', password: '', cityId: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [cities, setCities] = useState<Array<{ id: string; name: string }>>([])
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const { data } = await api.get('/api/city')
+        setCities(data.data || [])
+      } catch {
+        setCities([])
+      }
+    })()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,16 +35,25 @@ const Login: React.FC = () => {
     try {
   const { data } = await api.post('/api/auth/login', formData)
   localStorage.setItem('token', data.data.accessToken)
-  await login(formData.email, formData.password)
+  localStorage.setItem('cityId', formData.cityId)
+  await login(formData.username, formData.password, formData.cityId)
     } catch (err: unknown) {
       const allowDemo = import.meta.env.VITE_ALLOW_DEMO_LOGIN === 'true'
-      if (allowDemo && formData.email === 'admin@example.com' && formData.password === 'password123') {
+      if (allowDemo && formData.username === 'admin' && formData.password === 'password123') {
         localStorage.setItem('token', 'mock-token-123')
-        await login(formData.email, formData.password)
+        if (formData.cityId) {
+          localStorage.setItem('cityId', formData.cityId)
+        } else if (cities[0]?.id) {
+          localStorage.setItem('cityId', cities[0].id)
+        }
+        await login(formData.username, formData.password, formData.cityId || cities[0]?.id || '')
       } else {
-        const axiosErr = err as AxiosError<{ error?: string }>
+        const axiosErr = err as AxiosError<{ error?: string; details?: Array<{ field?: string; message?: string }> }>
         const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5001'
-        const message = axiosErr?.response?.data?.error || (!axiosErr.response ? `Cannot reach API at ${baseUrl}` : 'Login failed')
+        const validationDetails = axiosErr?.response?.data?.details?.map(d => d.message).filter(Boolean).join('; ')
+        const message = validationDetails
+          || axiosErr?.response?.data?.error
+          || (!axiosErr.response ? `Cannot reach API at ${baseUrl}` : 'Login failed')
         setError(message)
       }
     } finally {
@@ -42,7 +61,7 @@ const Login: React.FC = () => {
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -77,18 +96,33 @@ const Login: React.FC = () => {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
+              <label htmlFor="cityId" className="block text-sm font-medium text-gray-700">City</label>
+              <select
+                id="cityId"
+                name="cityId"
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={formData.cityId}
+                onChange={handleChange}
+              >
+                <option value="" disabled>Select a city</option>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username (not email)</label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your email"
-                value={formData.email}
+                placeholder="e.g. admin, manager, user1"
+                value={formData.username}
                 onChange={handleChange}
               />
             </div>
@@ -129,9 +163,11 @@ const Login: React.FC = () => {
           <div className="mt-6 p-4 bg-gray-50 rounded-md">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</h3>
             <div className="text-xs text-gray-600 space-y-1">
-              <div><strong>Admin:</strong> admin@example.com / password123</div>
-              <div><strong>Manager:</strong> manager@example.com / password123</div>
-              <div><strong>User:</strong> user1@example.com / password123</div>
+              <div><strong>Admin:</strong> username=admin, password=password123, city=Amsterdam</div>
+              <div><strong>Manager:</strong> username=manager, password=password123, city=Rotterdam</div>
+              <div><strong>Supervisor:</strong> username=supervisor, password=password123, city=The Hague</div>
+              <div><strong>User 1:</strong> username=user1, password=password123, city=Utrecht</div>
+              <div><strong>User 2:</strong> username=user2, password=password123, city=Eindhoven</div>
             </div>
           </div>
         </div>

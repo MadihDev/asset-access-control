@@ -16,4 +16,10 @@ router.post('/', requireAdmin, validateCreateRFIDKey, RFIDController.create)
 // Update key (Admin)
 router.put('/:id', requireAdmin, validateUpdateRFIDKey, RFIDController.update)
 
+// Assign key to user (Admin) - optional expiresAt defaults to now + 6h
+router.post('/assign', requireAdmin, RFIDController.assign)
+
+// Revoke key (Admin)
+router.post('/revoke', requireAdmin, RFIDController.revoke)
+
 export default router

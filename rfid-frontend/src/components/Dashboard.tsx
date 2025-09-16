@@ -16,10 +16,12 @@ interface DashboardProps {
 
 interface Stats {
   totalUsers: number
+  activeUsers?: number
   totalLocks: number
   totalAccessAttempts: number
   successfulAccess: number
   onlineLocks: number
+  activeKeys?: number
   recentAccessLogs: AccessLog[]
 }
 
@@ -54,7 +56,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     const fetchStats = async () => {
       try {
         setError(null)
-        const { data } = await api.get('/api/dashboard')
+        // If token payload or stored context includes cityId, append it
+        const storedCityId = localStorage.getItem('cityId') || undefined
+        const { data } = await api.get('/api/dashboard', { params: storedCityId ? { cityId: storedCityId } : {} })
         if (!mounted) return
         setStats(data.data as Stats)
       } catch (err) {
@@ -180,6 +184,41 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             </div>
           </div>
         </div>
+        {typeof stats.activeUsers === 'number' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path fillRule="evenodd" d="M2 13.5A4.5 4.5 0 016.5 9h7A4.5 4.5 0 0118 13.5V15a1 1 0 01-1 1H3a1 1 0 01-1-1v-1.5z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Active Users</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.activeUsers}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {typeof stats.activeKeys === 'number' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-teal-500 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M18 8a6 6 0 11-11.473 2.66l-3.39 3.39a1 1 0 01-1.414-1.415l3.39-3.39A6 6 0 0118 8z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Active Keys</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.activeKeys}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Recent Access Logs */}

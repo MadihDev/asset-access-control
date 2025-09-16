@@ -1,7 +1,5 @@
-import * as Prisma from '@prisma/client'
+import prisma from '../lib/prisma'
 import { CreateRFIDKeyRequest, RFIDKey } from '../types'
-
-const prisma = new (Prisma as any).PrismaClient()
 
 class RFIDService {
   async list(userId?: string): Promise<RFIDKey[]> {

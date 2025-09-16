@@ -30,13 +30,17 @@ const isId = (value: string): boolean => {
 
 // Auth validation rules
 export const validateLogin = [
-  body('email')
-    .isEmail()
-    .withMessage('Valid email is required')
-    .normalizeEmail(),
+  body('username')
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Username must be between 3 and 50 characters')
+    .isAlphanumeric()
+    .withMessage('Username must contain only letters and numbers'),
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
+  body('cityId')
+    .notEmpty()
+    .withMessage('City is required'),
   handleValidationErrors
 ]
 

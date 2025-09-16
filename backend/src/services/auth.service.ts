@@ -1,9 +1,8 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
-import * as Prisma from '@prisma/client'
+import prisma from '../lib/prisma'
+import logger from '../lib/logger'
 import { LoginRequest, LoginResponse, JWTPayload, UserRole, User } from '../types'
-
-const prisma = new (Prisma as any).PrismaClient()
 
 class AuthService {
   private readonly jwtSecret: string
@@ -17,11 +16,17 @@ class AuthService {
   }
 
   async login(loginData: LoginRequest): Promise<LoginResponse> {
-    const { email, password } = loginData
+    const { username, password, cityId } = loginData
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email }
+    // Ensure city exists and is active
+    const city = await prisma.city.findUnique({ where: { id: cityId } })
+    if (!city || !city.isActive) {
+      throw new Error('Invalid city')
+    }
+
+    // Find user by username and city
+    const user = await prisma.user.findFirst({
+      where: { username, cityId }
     })
 
     if (!user) {
@@ -54,6 +59,7 @@ class AuthService {
       lastName: rest.lastName,
       role: rest.role as unknown as UserRole,
       isActive: rest.isActive,
+      cityId: rest.cityId ?? undefined,
       createdAt: rest.createdAt,
       updatedAt: rest.updatedAt,
       lastLoginAt: rest.lastLoginAt ?? undefined
@@ -99,7 +105,7 @@ class AuthService {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken
       }
-    } catch (error) {
+    } catch (_error) {
       throw new Error('Invalid refresh token')
     }
   }
@@ -125,11 +131,12 @@ class AuthService {
         lastName: rest.lastName,
         role: rest.role as unknown as UserRole,
         isActive: rest.isActive,
+        cityId: rest.cityId ?? undefined,
         createdAt: rest.createdAt,
         updatedAt: rest.updatedAt,
         lastLoginAt: rest.lastLoginAt ?? undefined
       }
-    } catch (error) {
+    } catch (_error) {
       return null
     }
   }
@@ -171,8 +178,8 @@ class AuthService {
     // 2. Store it in the database with expiration
     // 3. Send email with reset link
     
-    // For now, we'll just log it
-    console.log(`Password reset requested for: ${email}`)
+  // For now, we'll just log it
+  logger.info(`Password reset requested for: ${email}`)
   }
 
   private generateAccessToken(user: Pick<User, 'id' | 'email' | 'role'>): string {

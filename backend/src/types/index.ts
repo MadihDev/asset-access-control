@@ -8,6 +8,7 @@ export interface User {
   lastName: string
   role: UserRole
   isActive: boolean
+  cityId?: string
   createdAt: Date
   updatedAt: Date
   lastLoginAt?: Date
@@ -39,8 +40,9 @@ export interface UpdateUserRequest {
 }
 
 export interface LoginRequest {
-  email: string
+  username: string
   password: string
+  cityId: string
 }
 
 export interface LoginResponse {
@@ -127,6 +129,19 @@ export interface CreateRFIDKeyRequest {
   name?: string
   userId: string
   expiresAt?: Date
+}
+
+export interface AssignRFIDKeyRequest {
+  cardId: string
+  userId: string
+  name?: string
+  expiresAt?: Date
+}
+
+export interface RevokeRFIDKeyRequest {
+  id?: string
+  cardId?: string
+  reason?: string
 }
 
 export interface AccessLog {

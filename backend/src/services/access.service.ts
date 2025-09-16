@@ -1,7 +1,5 @@
-import * as Prisma from '@prisma/client'
+import prisma from '../lib/prisma'
 import { AccessAttemptRequest, AccessLog, AccessLogQuery, PaginatedResponse, AccessResult, AuditAction, AccessType } from '../types'
-
-const prisma = new (Prisma as any).PrismaClient()
 
 class AccessService {
   async logAccessAttempt(attemptData: AccessAttemptRequest): Promise<AccessLog> {

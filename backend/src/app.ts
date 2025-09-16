@@ -11,6 +11,7 @@ import { apiLimiter, authLimiter } from './middleware/rateLimit.middleware'
 import permissionRoutes from './routes/permission.routes'
 import rfidRoutes from './routes/rfid.routes'
 import auditRoutes from './routes/audit.routes'
+import cityRoutes from './routes/city.routes'
 
 // Load environment variables
 dotenv.config()
@@ -38,6 +39,7 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/permission', permissionRoutes)
 app.use('/api/rfid', rfidRoutes)
 app.use('/api/audit', auditRoutes)
+app.use('/api/city', cityRoutes)
 
 // ERROR HANDLER (last)
 app.use(errorHandler)

@@ -23,6 +23,11 @@ This checklist tracks what’s DONE vs NOT DONE to reach 100% completion, based 
 - [x] Rate limiting middleware (e.g., for auth endpoints)
  - [x] Audit logging of key actions (login, permission changes)
  - [x] Audit Logs API: list with filters and pagination (`GET /api/audit`)
+- [x] City directory endpoint for login (`GET /api/city`)
+- [x] City-scoped login: validate `{ username, password, cityId }` within selected city
+ - [x] Seed/demo users assigned to cities (`User.cityId`) for out-of-the-box city login
+- [ ] Key auto-expiry enforcement (6h) + background job to deactivate and notify
+- [ ] City-scoped RBAC filters across endpoints (limit data by user's city)
 - [ ] WebSocket setup: connection/auth handlers, real-time access events
 - [x] Dockerfile and docker-compose (DB, API, frontend)
 - [x] API docs (docs/api.md) with endpoints, params, and examples
@@ -49,6 +54,10 @@ Note: the frontend lives in the `rfid-frontend/` folder.
 - [x] Export CSV from logs (Access Logs)
 - [x] Export CSV from users
 - [ ] Tests (components, hooks, and e2e smoke)
+- [x] Login page: City + Username + Password
+- [ ] Post-login redirect to user-assigned location(s) in selected city
+- [ ] Dashboard: show user’s locations and per-location KPIs (Active Users, Active Locks, Active Keys)
+- [ ] Real-time KPI updates via WebSocket
 
 ## DevOps & Quality
 
@@ -87,8 +96,7 @@ Note: the frontend lives in the `rfid-frontend/` folder.
 ---
 
 Quick Wins to do next:
-- CI: add GitHub Actions workflow for lint, typecheck, and tests. — done (.github/workflows/ci.yml)
-- Docs: update root README with run/seed/build steps, ports, and API overview.
-- Docker: add Dockerfile(s) and docker-compose for DB, API (5001), and frontend (5173).
-- Tests: add unit tests for services/controllers and key UI components.
-- Real-time: add WebSocket server and client for live access events.
+- Backend: implement 6h key auto-expiry job and enforcement in access checks.
+- Dashboard: add per-location KPIs and city scoping on `/api/dashboard`.
+- Real-time: add WebSocket server and client for live KPI/lock status.
+- Tests: add backend auth (city-aware) tests and frontend login/dashboard tests.
