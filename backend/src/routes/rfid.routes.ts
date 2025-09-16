@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import RFIDController from '../controllers/rfid.controller'
 import { authenticateToken, requireAdmin, requireManagerOrAbove } from '../middleware/auth.middleware'
-import { validateCreateRFIDKey, validateUpdateRFIDKey } from '../middleware/validation.middleware'
+import { validateCreateRFIDKey, validateUpdateRFIDKey, validateAssignRFIDKey, validateRevokeRFIDKey } from '../middleware/validation.middleware'
 
 const router = Router()
 
@@ -17,9 +17,9 @@ router.post('/', requireAdmin, validateCreateRFIDKey, RFIDController.create)
 router.put('/:id', requireAdmin, validateUpdateRFIDKey, RFIDController.update)
 
 // Assign key to user (Admin) - optional expiresAt defaults to now + 6h
-router.post('/assign', requireAdmin, RFIDController.assign)
+router.post('/assign', requireAdmin, validateAssignRFIDKey, RFIDController.assign)
 
 // Revoke key (Admin)
-router.post('/revoke', requireAdmin, RFIDController.revoke)
+router.post('/revoke', requireAdmin, validateRevokeRFIDKey, RFIDController.revoke)
 
 export default router

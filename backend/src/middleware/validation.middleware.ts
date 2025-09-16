@@ -240,6 +240,48 @@ export const validateUpdateRFIDKey = [
   handleValidationErrors
 ]
 
+// RFID assign/revoke validation
+export const validateAssignRFIDKey = [
+  body('cardId')
+    .isLength({ min: 1, max: 100 })
+    .withMessage('cardId is required and must be less than 100 characters')
+    .trim(),
+  body('userId')
+    .custom((v) => isId(v))
+    .withMessage('Valid userId is required'),
+  body('name')
+    .optional()
+    .isLength({ max: 200 })
+    .withMessage('Name must be less than 200 characters')
+    .trim(),
+  body('expiresAt')
+    .optional()
+    .isISO8601()
+    .withMessage('expiresAt must be a valid ISO 8601 date'),
+  handleValidationErrors
+]
+
+export const validateRevokeRFIDKey = [
+  body('id')
+    .optional({ values: 'falsy' })
+    .custom((v) => isId(v))
+    .withMessage('id must be a valid ID when provided'),
+  body('cardId')
+    .optional({ values: 'falsy' })
+    .isLength({ min: 1, max: 100 })
+    .withMessage('cardId must be a non-empty string with max length 100 when provided')
+    .trim(),
+  // Custom: require at least one of id or cardId
+  (req: Request, res: Response, next: NextFunction) => {
+    const { id, cardId } = req.body || {}
+    if (!id && !cardId) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: [{ field: 'id|cardId', message: 'Either id or cardId is required' }] })
+    }
+    return next()
+  },
+  handleValidationErrors
+]
+
 // Permission validation rules
 export const validateCreatePermission = [
   body('userId')
