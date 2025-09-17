@@ -40,7 +40,7 @@ This checklist tracks what’s DONE vs NOT DONE to reach 100% completion, based 
   - [x] GET `/api/location/:addressId/locks` (status=online|offline|active|inactive, pagination)
   - [x] GET `/api/location/:addressId/keys` (status=active|expired, pagination)
   - [x] Bulk endpoints: permissions grant/revoke and key assignments (limits + validation)
-  - [ ] Index review: `UserPermission.lockId`, `Lock.addressId`, `RFIDKey.userId`
+  - [x] Index review: `UserPermission.lockId`, `UserPermission.userId`, `Lock.addressId`, `RFIDKey.userId`, `RFIDKey(isActive, expiresAt)`, `Address.cityId`, `User.cityId`
 
 ## Frontend (Vite + React + Tailwind v4)
 

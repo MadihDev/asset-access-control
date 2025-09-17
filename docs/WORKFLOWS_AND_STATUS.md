@@ -68,16 +68,17 @@ Priority items next:
 
 - Broaden WS usage to live-update Location Details: users active, locks online/offline, keys state.
 
-4. Docs for Location endpoints and bulk actions
+4. Docs for Location endpoints and bulk actions (Done)
 
-- Expand `docs/api.md` with location-scoped endpoints and bulk routes.
-- Bulk Actions guide added at `docs/bulk-actions.md`; API references still pending.
+- `docs/api.md` expanded with location-scoped endpoints, bulk routes, limits, and realtime events.
+- Bulk Actions guide at `docs/bulk-actions.md` covers CSV formats and troubleshooting.
 
-5. Backend: Location endpoints completeness
+5. Backend: Location endpoints completeness (Done)
 
-- Ensure `/api/location/:addressId/{users,locks,keys}` support status filters and pagination as used by the UI.
-- Bulk endpoints for permissions and key assignments; rate limiting and validation.
-- Index review: `UserPermission.lockId`, `Lock.addressId`, `RFIDKey.userId`.
+- `/api/location/:addressId/{users,locks,keys}` support status filters and pagination; scoped to city and address.
+- Bulk endpoints finalized for permissions and key assignments with validation, dedupe, and rate limiting.
+- WebSocket events emitted after bulk ops.
+- Index review completed: added indexes for `UserPermission.lockId`, `UserPermission.userId`, `Lock.addressId`, `RFIDKey.userId`, `RFIDKey(isActive, expiresAt)`, `Address.cityId`, `User.cityId`.
 
 6. Security hardening
 

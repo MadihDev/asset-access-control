@@ -31,6 +31,7 @@ model User {
   refreshTokens RefreshToken[]
 
   @@map("users")
+  @@index([cityId], map: "idx_users_city")
 }
 
 model City {
@@ -60,6 +61,7 @@ model Address {
 
   @@unique([street, number, zipCode, cityId])
   @@map("addresses")
+  @@index([cityId], map: "idx_addresses_city")
 }
 
 model Lock {
@@ -80,6 +82,8 @@ model Lock {
   permissions UserPermission[]
 
   @@map("locks")
+  @@index([addressId], map: "idx_locks_address")
+  @@index([isActive, isOnline], map: "idx_locks_active_online")
 }
 
 model RFIDKey {
@@ -96,6 +100,8 @@ model RFIDKey {
   user       User        @relation(fields: [userId], references: [id])
 
   @@map("rfid_keys")
+  @@index([userId], map: "idx_rfid_keys_user")
+  @@index([isActive, expiresAt], map: "idx_rfid_keys_active_exp")
 }
 
 model UserPermission {
@@ -112,6 +118,8 @@ model UserPermission {
 
   @@unique([userId, lockId])
   @@map("user_permissions")
+  @@index([lockId], map: "idx_user_permissions_lock")
+  @@index([userId], map: "idx_user_permissions_user")
 }
 
 model AccessLog {
