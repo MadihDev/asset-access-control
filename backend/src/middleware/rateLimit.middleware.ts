@@ -21,3 +21,14 @@ export const authLimiter = rateLimit({
     error: 'Too many auth attempts, please try again later.'
   }
 })
+
+// Dedicated limiter for bulk operations to protect DB and queues
+export const bulkLimiter = rateLimit({
+  windowMs: Number(process.env.BULK_RATE_LIMIT_WINDOW_MS ?? 60 * 1000),
+  max: Number(process.env.BULK_RATE_LIMIT_MAX ?? 10),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: {
+    error: 'Too many bulk operations, please slow down.'
+  }
+})

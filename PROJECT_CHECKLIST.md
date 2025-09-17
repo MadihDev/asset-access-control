@@ -35,11 +35,11 @@ This checklist tracks what’s DONE vs NOT DONE to reach 100% completion, based 
 
 ### Location Overview & Admin Connect (Backend)
 
-- [ ] Location-scoped endpoints (by Address)
-  - [ ] GET `/api/location/:addressId/users` (status=active|inactive, pagination)
-  - [ ] GET `/api/location/:addressId/locks` (status=online|offline|active|inactive, pagination)
-  - [ ] GET `/api/location/:addressId/keys` (status=active|inactive, pagination)
-  - [ ] Bulk endpoints: permissions grant/revoke and key assignments
+- [x] Location-scoped endpoints (by Address)
+  - [x] GET `/api/location/:addressId/users` (status=active|inactive, pagination)
+  - [x] GET `/api/location/:addressId/locks` (status=online|offline|active|inactive, pagination)
+  - [x] GET `/api/location/:addressId/keys` (status=active|expired, pagination)
+  - [x] Bulk endpoints: permissions grant/revoke and key assignments (limits + validation)
   - [ ] Index review: `UserPermission.lockId`, `Lock.addressId`, `RFIDKey.userId`
 
 ## Frontend (Vite + React + Tailwind v4)
@@ -93,11 +93,11 @@ Note: the frontend lives in the `rfid-frontend/` folder.
 
 ### Location Overview & Admin Connect (Docs, Tests, Ops)
 
-- [ ] API docs for location endpoints (users/locks/keys; bulk)
+- [x] API docs for location endpoints (users/locks/keys; bulk)
 - [ ] Frontend README section for Location Details workflow
-- [ ] Backend integration tests for location endpoints
+- [x] Backend integration tests for location endpoints
 - [ ] Frontend component tests for Location Details lists/actions
-- [ ] Rate limiting for bulk endpoints and sensitive operations
+- [x] Rate limiting for bulk endpoints and sensitive operations
 
 ## Data & Security
 

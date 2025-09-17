@@ -49,3 +49,20 @@ Notes
 - All protected routes require `Authorization: Bearer <token>`
 - Role checks enforced (e.g., admin/manager for sensitive operations)
 - Validation errors return `{ success: false, error: string }`
+
+Location Overview & Admin Connect (auth required)
+
+- `GET /location/:addressId/users` – list users with effective access at an address; filters: `status=active|inactive`, `page`, `limit`, optional `cityId` when SUPER_ADMIN
+- `GET /location/:addressId/locks` – list locks at an address; filters: `status=active|inactive|online|offline`, `page`, `limit`
+- `GET /location/:addressId/keys` – list keys for users with access at an address; filters: `status=active|expired`, `page`, `limit`
+- `POST /location/:addressId/permissions` – Manager+ only; bulk grant/revoke permissions. Body: `{ grants: [{ userId, lockId, validFrom?, validTo? }], revokes: [{ userId, lockId }] }`
+	- Limits: `MAX_LOCATION_BULK_ITEMS` (default 500). Returns 413 if exceeded.
+	- Validation: date order, required fields, address scoping and city scoping enforced.
+- `POST /location/:addressId/keys/assign` – Manager+ only; bulk create/update/reassign keys. Body: `{ items: [{ cardId, userId, name?, expiresAt?, isActive? }] }`
+	- Limits: `MAX_LOCATION_BULK_ITEMS` (default 500). Returns 413 if exceeded.
+	- Validation: required fields, valid dates, city scoping enforced.
+
+Realtime events
+
+- On successful bulk permissions: event `location:permissions:changed` is emitted to room `city:<cityId>` with payload `{ addressId, counts: { granted, updated, revoked }, ts }`.
+- On successful bulk key assignment: event `location:keys:changed` is emitted to room `city:<cityId>` with payload `{ addressId, counts: { created, reassigned, updated }, ts }`.

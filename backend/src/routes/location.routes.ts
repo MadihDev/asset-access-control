@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import LocationController from '../controllers/location.controller'
 import { authenticateToken, requireManagerOrAbove } from '../middleware/auth.middleware'
+import { bulkLimiter } from '../middleware/rateLimit.middleware'
 
 const router = Router()
 
@@ -12,7 +13,7 @@ router.get('/:addressId/locks', (req, res) => LocationController.listLocks(req, 
 router.get('/:addressId/keys', (req, res) => LocationController.listKeys(req, res))
 
 // Manager+ for bulk operations
-router.post('/:addressId/permissions', requireManagerOrAbove, (req, res) => LocationController.bulkPermissions(req, res))
-router.post('/:addressId/keys/assign', requireManagerOrAbove, (req, res) => LocationController.bulkAssignKeys(req, res))
+router.post('/:addressId/permissions', bulkLimiter, requireManagerOrAbove, (req, res) => LocationController.bulkPermissions(req, res))
+router.post('/:addressId/keys/assign', bulkLimiter, requireManagerOrAbove, (req, res) => LocationController.bulkAssignKeys(req, res))
 
 export default router

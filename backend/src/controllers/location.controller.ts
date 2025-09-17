@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { getEffectiveCityId } from '../lib/scope'
+import { emitToCity } from '../lib/ws'
 import { UserRole } from '../types'
 
 class LocationController {
@@ -283,10 +284,42 @@ class LocationController {
         return res.status(400).json({ success: false, error: 'Provide at least one grant or revoke item' })
       }
 
+      // Enforce bulk size limits
+      const MAX_BULK = Number(process.env.MAX_LOCATION_BULK_ITEMS ?? 500)
+      const totalItems = grants.length + revokes.length
+      if (totalItems > MAX_BULK) {
+        return res.status(413).json({ success: false, error: `Too many items (${totalItems}). Max allowed: ${MAX_BULK}` })
+      }
+
+      // Basic field validation and date coherence
+      for (const g of grants) {
+        if (!g.userId || !g.lockId) {
+          return res.status(400).json({ success: false, error: 'Each grant requires userId and lockId' })
+        }
+        if (g.validFrom && isNaN(new Date(g.validFrom).getTime())) {
+          return res.status(400).json({ success: false, error: `Invalid validFrom for user ${g.userId} & lock ${g.lockId}` })
+        }
+        if (g.validTo && isNaN(new Date(g.validTo).getTime())) {
+          return res.status(400).json({ success: false, error: `Invalid validTo for user ${g.userId} & lock ${g.lockId}` })
+        }
+        if (g.validFrom && g.validTo) {
+          const from = new Date(g.validFrom)
+          const to = new Date(g.validTo)
+          if (from.getTime() > to.getTime()) {
+            return res.status(400).json({ success: false, error: `validFrom must be <= validTo for user ${g.userId} & lock ${g.lockId}` })
+          }
+        }
+      }
+      for (const r of revokes) {
+        if (!r.userId || !r.lockId) {
+          return res.status(400).json({ success: false, error: 'Each revoke requires userId and lockId' })
+        }
+      }
+
       // Compute all lockIds and ensure they belong to the same address
       const lockIds = Array.from(new Set([...grants.map(g => g.lockId), ...revokes.map(r => r.lockId)]))
-  const locks: Array<{ id: string; addressId: string }> = await prisma.lock.findMany({ where: { id: { in: lockIds } }, select: { id: true, addressId: true } })
-  const lockMap = new Map<string, string>(locks.map((l: { id: string; addressId: string }) => [l.id, l.addressId]))
+      const locks: Array<{ id: string; addressId: string }> = await prisma.lock.findMany({ where: { id: { in: lockIds } }, select: { id: true, addressId: true } })
+      const lockMap = new Map<string, string>(locks.map((l: { id: string; addressId: string }) => [l.id, l.addressId]))
       for (const lid of lockIds) {
         const addr = lockMap.get(lid)
         if (addr !== addressId) {
@@ -308,9 +341,25 @@ class LocationController {
       const now = new Date()
       const results = { granted: 0, updated: 0, revoked: 0 }
 
-  await prisma.$transaction(async (tx: typeof prisma) => {
+      // Dedupe grant/revoke pairs to avoid duplicate DB operations
+      const uniqGrantKeys = new Set<string>()
+      const uniqGrants = grants.filter((g) => {
+        const key = `${g.userId}::${g.lockId}`
+        if (uniqGrantKeys.has(key)) return false
+        uniqGrantKeys.add(key)
+        return true
+      })
+      const uniqRevokeKeys = new Set<string>()
+      const uniqRevokes = revokes.filter((r) => {
+        const key = `${r.userId}::${r.lockId}`
+        if (uniqRevokeKeys.has(key)) return false
+        uniqRevokeKeys.add(key)
+        return true
+      })
+
+      await prisma.$transaction(async (tx: typeof prisma) => {
         // Process grants (upsert/update semantics on userId+lockId)
-        for (const g of grants) {
+        for (const g of uniqGrants) {
           const validFrom = g.validFrom ? new Date(g.validFrom) : now
           const validTo = g.validTo ? new Date(g.validTo) : null
           const existing = await tx.userPermission.findUnique({ where: { userId_lockId: { userId: g.userId, lockId: g.lockId } } })
@@ -327,13 +376,20 @@ class LocationController {
         }
 
         // Process revokes (delete if exists)
-        for (const r of revokes) {
+        for (const r of uniqRevokes) {
           const existing = await tx.userPermission.findUnique({ where: { userId_lockId: { userId: r.userId, lockId: r.lockId } } })
           if (existing) {
             await tx.userPermission.delete({ where: { id: existing.id } })
             results.revoked += 1
           }
         }
+      })
+
+      // Emit realtime event to city listeners
+      emitToCity(address.cityId, 'location:permissions:changed', {
+        addressId,
+        counts: results,
+        ts: new Date().toISOString(),
       })
 
       return res.status(200).json({ success: true, data: results })
@@ -366,6 +422,12 @@ class LocationController {
         return res.status(400).json({ success: false, error: 'Provide at least one item to assign' })
       }
 
+      // Enforce bulk size limits
+      const MAX_BULK = Number(process.env.MAX_LOCATION_BULK_ITEMS ?? 500)
+      if (items.length > MAX_BULK) {
+        return res.status(413).json({ success: false, error: `Too many items (${items.length}). Max allowed: ${MAX_BULK}` })
+      }
+
       // Basic item validation
       for (const it of items) {
         if (!it.cardId || !it.userId) {
@@ -393,7 +455,11 @@ class LocationController {
       const summary = { created: 0, reassigned: 0, updated: 0 }
 
       await prisma.$transaction(async (tx: typeof prisma) => {
+        // Dedupe by cardId to avoid double-processing
+        const seen = new Set<string>()
         for (const it of items) {
+          if (seen.has(it.cardId)) continue
+          seen.add(it.cardId)
           const expiresAt = it.expiresAt ? new Date(it.expiresAt) : null
           const isActive = it.isActive === undefined ? true : !!it.isActive
           const existing = await tx.rFIDKey.findUnique({ where: { cardId: it.cardId }, select: { id: true, userId: true, expiresAt: true, name: true, isActive: true } })
@@ -423,6 +489,13 @@ class LocationController {
             summary.created += 1
           }
         }
+      })
+
+      // Emit realtime event to city listeners
+      emitToCity(address.cityId, 'location:keys:changed', {
+        addressId,
+        counts: summary,
+        ts: new Date().toISOString(),
       })
 
       return res.status(200).json({ success: true, data: summary })
