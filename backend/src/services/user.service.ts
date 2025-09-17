@@ -156,7 +156,7 @@ class UserService {
     const sortField = (typeof query.sortBy === 'string' && allowedSortFields.has(query.sortBy)) ? query.sortBy : 'createdAt'
     const sortDir: 'asc' | 'desc' = (typeof query.sortOrder === 'string' && allowedSortOrders.has(query.sortOrder)) ? (query.sortOrder as 'asc' | 'desc') : 'desc'
 
-    const { role, search } = query
+  const { role, search, cityId } = query
     let isActiveParsed: boolean | undefined
     const rawIsActive = (query as any).isActive as unknown
     if (typeof rawIsActive === 'boolean') {
@@ -168,7 +168,7 @@ class UserService {
     }
 
     const skip = (pageNum - 1) * limitNum
-    const where: any = {}
+  const where: any = {}
 
     if (role) {
       where.role = role
@@ -185,6 +185,10 @@ class UserService {
         { email: { contains: search, mode: 'insensitive' } },
         { username: { contains: search, mode: 'insensitive' } }
       ]
+    }
+
+    if (cityId) {
+      where.cityId = cityId
     }
 
     const [users, total] = await Promise.all([
@@ -222,9 +226,11 @@ class UserService {
     }
   }
 
-  async getUsersWithPermissions(): Promise<Array<User & { permissionCount: number }>> {
+  async getUsersWithPermissions(cityId?: string): Promise<Array<User & { permissionCount: number }>> {
+    const whereUser: any = { isActive: true }
+    if (cityId) whereUser.cityId = cityId
     const users = await prisma.user.findMany({
-      where: { isActive: true },
+      where: whereUser,
       include: {
         permissions: {
           where: {
@@ -248,7 +254,7 @@ class UserService {
     })
   }
 
-  async getUserStats(userId: string): Promise<{
+  async getUserStats(userId: string, cityId?: string): Promise<{
     totalAccessAttempts: number
     successfulAccess: number
     failedAccess: number
@@ -257,7 +263,7 @@ class UserService {
   }> {
   const [accessLogs, permissions] = await Promise.all([
       prisma.accessLog.findMany({
-        where: { userId },
+        where: { userId, ...(cityId ? { lock: { address: { cityId } } } : {}) },
         orderBy: { timestamp: 'desc' }
       }),
       prisma.userPermission.count({
@@ -267,7 +273,8 @@ class UserService {
           OR: [
             { validTo: null },
             { validTo: { gte: new Date() } }
-          ]
+          ],
+          ...(cityId ? { lock: { address: { cityId } } } : {})
         }
       })
     ])

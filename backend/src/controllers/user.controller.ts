@@ -3,6 +3,7 @@ import UserService from '../services/user.service'
 import AuditService from '../services/audit.service'
 import { AuditAction, CreateUserRequest, UpdateUserRequest, UserQuery, UserRole } from '../types'
 import { canManage } from '../lib/rbac'
+import { getEffectiveCityId } from '../lib/scope'
 
 class UserController {
   async createUser(req: Request, res: Response): Promise<void> {
@@ -18,6 +19,10 @@ class UserController {
       if (!isAllowed) {
         res.status(403).json({ success: false, error: 'Insufficient role to create this user' })
         return
+      }
+      // Non-super-admins can only create users in their own city
+      if (actor.role !== UserRole.SUPER_ADMIN) {
+        (userData as any).cityId = actor.cityId
       }
       const user = await UserService.createUser(userData)
       await AuditService.log({ req, action: AuditAction.CREATE, entityType: 'User', entityId: user.id, newValues: { ...user } })
@@ -38,6 +43,15 @@ class UserController {
   async getUserById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params
+      const actor = (req as any).user
+      if (!actor) {
+        res.status(401).json({ success: false, error: 'Authentication required' })
+        return
+      }
+      if (!(actor.id === id || [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPERVISOR].includes(actor.role))) {
+        res.status(403).json({ success: false, error: 'Insufficient permissions' })
+        return
+      }
       const user = await UserService.getUserById(id)
       
       if (!user) {
@@ -79,6 +93,11 @@ class UserController {
         res.status(403).json({ success: false, error: 'Insufficient role to modify this user' })
         return
       }
+      // Disallow cross-city updates by non-super-admins
+      if (actor.role !== UserRole.SUPER_ADMIN && existing.cityId && actor.cityId && existing.cityId !== actor.cityId) {
+        res.status(403).json({ success: false, error: 'Cannot modify user from a different city' })
+        return
+      }
       const before = existing
       const user = await UserService.updateUser(id, updateData)
       await AuditService.log({ req, action: AuditAction.UPDATE, entityType: 'User', entityId: id, oldValues: before as any, newValues: { ...user } })
@@ -113,6 +132,11 @@ class UserController {
         res.status(403).json({ success: false, error: 'Insufficient role to delete this user' })
         return
       }
+      // Disallow cross-city deletes by non-super-admins
+      if (actor.role !== UserRole.SUPER_ADMIN && existing.cityId && actor.cityId && existing.cityId !== actor.cityId) {
+        res.status(403).json({ success: false, error: 'Cannot delete user from a different city' })
+        return
+      }
       await UserService.deleteUser(id)
       await AuditService.log({ req, action: AuditAction.DELETE, entityType: 'User', entityId: id, oldValues: existing as any })
       
@@ -131,7 +155,8 @@ class UserController {
   async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
       const query: UserQuery = req.query as any
-      const result = await UserService.getAllUsers(query)
+      const effectiveCityId = getEffectiveCityId(req)
+      const result = await UserService.getAllUsers({ ...query, cityId: effectiveCityId ?? query.cityId })
       
       res.status(200).json({
         success: true,
@@ -149,7 +174,8 @@ class UserController {
 
   async getUsersWithPermissions(req: Request, res: Response): Promise<void> {
     try {
-      const users = await UserService.getUsersWithPermissions()
+      const effectiveCityId = getEffectiveCityId(req)
+      const users = await UserService.getUsersWithPermissions(effectiveCityId)
       
       res.status(200).json({
         success: true,
@@ -167,7 +193,17 @@ class UserController {
   async getUserStats(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params
-      const stats = await UserService.getUserStats(id)
+      const actor = (req as any).user
+      if (!actor) {
+        res.status(401).json({ success: false, error: 'Authentication required' })
+        return
+      }
+      if (!(actor.id === id || [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPERVISOR].includes(actor.role))) {
+        res.status(403).json({ success: false, error: 'Insufficient permissions' })
+        return
+      }
+      const effectiveCityId = actor.role === UserRole.SUPER_ADMIN ? undefined : actor.cityId
+      const stats = await UserService.getUserStats(id, effectiveCityId)
       
       res.status(200).json({
         success: true,
@@ -185,8 +221,9 @@ class UserController {
   async exportUsers(req: Request, res: Response): Promise<void> {
     try {
       const query: UserQuery = req.query as any
+      const effectiveCityId = getEffectiveCityId(req)
       // Export up to 10k users according to current filters/sort
-      const exportQuery: UserQuery = { ...query, page: 1, limit: 10000 } as any
+      const exportQuery: UserQuery = { ...query, page: 1, limit: 10000, cityId: effectiveCityId ?? query.cityId } as any
       const result = await UserService.getAllUsers(exportQuery)
 
       res.setHeader('Content-Type', 'text/csv')

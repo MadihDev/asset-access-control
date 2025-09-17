@@ -305,8 +305,16 @@ function UserEditModal({ id, onClose, onUpdated }: { id: string; onClose: () => 
   const [username, setUsername] = useState(u?.username || '')
   const [role, setRole] = useState<Role>(u?.role || 'USER')
   const [isActive, setIsActive] = useState<boolean>(u?.isActive !== false)
+  const [cityId, setCityId] = useState<string | ''>('')
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  // Load cities for SUPER_ADMIN assignment
+  type City = { id: string; name: string }
+  const { data: cityRes } = useQuery<{ success: boolean; data: City[] }>({
+    queryKey: ['cities'],
+    queryFn: async () => (await api.get('/api/city')).data,
+  })
 
   // Sync state when user loads
   useEffect(() => {
@@ -317,16 +325,18 @@ function UserEditModal({ id, onClose, onUpdated }: { id: string; onClose: () => 
       setUsername(u.username || '')
       setRole(u.role)
       setIsActive(u.isActive !== false)
+      // Best effort: if user has a city field in details later, setCityId; otherwise leave blank
     }
   }, [u])
 
-  type UpdateUserPayload = { firstName: string; lastName: string; email: string; username?: string; role: Role; isActive: boolean }
+  type UpdateUserPayload = { firstName: string; lastName: string; email: string; username?: string; role: Role; isActive: boolean; cityId?: string }
   const mutation = useMutation({
     mutationFn: async () => {
       setSubmitting(true)
       setErrorMsg(null)
       const payload: UpdateUserPayload = { firstName, lastName, email, role, isActive }
       if (username) payload.username = username
+      if (cityId) payload.cityId = cityId
       const res = await api.put(`/api/user/${id}`, payload)
       return res.data
     },
@@ -363,21 +373,26 @@ function UserEditModal({ id, onClose, onUpdated }: { id: string; onClose: () => 
           </div>
           <Input label="Email" type="email" value={email} onChange={setEmail} required />
           <Input label="Username" value={username} onChange={setUsername} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700">Role</label>
-              <select className="mt-1 block w-full rounded-md border-gray-300" value={role} onChange={e => setRole(e.target.value as Role)}>
-                <option value="SUPER_ADMIN">Super Admin</option>
-                <option value="ADMIN">Admin</option>
-                <option value="SUPERVISOR">Supervisor</option>
-                <option value="USER">User</option>
-              </select>
+              <RoleSelect value={role} onChange={setRole} />
             </div>
             <div className="flex items-end">
               <label className="inline-flex items-center mt-6">
                 <input type="checkbox" className="rounded border-gray-300" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
                 <span className="ml-2 text-sm text-gray-700">Active</span>
               </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">City</label>
+              <select className="mt-1 block w-full rounded-md border-gray-300" value={cityId} onChange={e => setCityId(e.target.value)}>
+                <option value="">Unassigned</option>
+                {(cityRes?.data || []).map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Only SUPER_ADMIN can reassign users across cities; lower roles ignored by server.</p>
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4">
@@ -703,7 +718,14 @@ function RFIDKeysPanel({ userId, canManage }: { userId: string; canManage: boole
       )}
 
       {showAdd && (
-        <AddRFIDKeyModal userId={userId} onClose={() => setShowAdd(false)} onAdded={() => { qc.invalidateQueries({ queryKey: ['rfidKeys', userId] }); toastSuccess('RFID key added') }} />
+        <AddRFIDKeyModal
+          userId={userId}
+          onClose={() => setShowAdd(false)}
+          onAdded={() => {
+            qc.invalidateQueries({ queryKey: ['rfidKeys', userId] })
+            toastSuccess('RFID key added')
+          }}
+        />
       )}
     </div>
   )
@@ -755,6 +777,31 @@ function AddRFIDKeyModal({ userId, onClose, onAdded }: { userId: string; onClose
         </div>
       </div>
     </Modal>
+  )
+}
+
+// ---------- RoleSelect helper ----------
+function RoleSelect({ value, onChange }: { value: Role; onChange: (r: Role) => void }) {
+  // Lightweight role of current actor from localStorage (set at login); fallback to show all
+  let actorRole: Role | string | null = null
+  try {
+    const raw = localStorage.getItem('user')
+    if (raw) actorRole = (JSON.parse(raw)?.role as string) || null
+  } catch { /* ignore */ }
+
+  const options: Role[] = (() => {
+    if (actorRole === 'SUPER_ADMIN') return ['SUPER_ADMIN','ADMIN','SUPERVISOR','USER']
+    if (actorRole === 'ADMIN') return ['ADMIN','SUPERVISOR','USER']
+    if (actorRole === 'SUPERVISOR') return ['SUPERVISOR','USER']
+    return ['USER']
+  })()
+
+  return (
+    <select className="mt-1 block w-full rounded-md border-gray-300" value={value} onChange={e => onChange(e.target.value as Role)}>
+      {options.map(opt => (
+        <option key={opt} value={opt}>{opt.replace('_',' ')}</option>
+      ))}
+    </select>
   )
 }
 

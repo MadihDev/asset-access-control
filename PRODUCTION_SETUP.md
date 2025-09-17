@@ -3,6 +3,7 @@
 ## 🚀 Quick Start
 
 ### 1. Database Setup
+
 ```bash
 # Create PostgreSQL database
 createdb rfid_access_control
@@ -12,12 +13,14 @@ psql -U postgres -c "CREATE DATABASE rfid_access_control;"
 ```
 
 ### 2. Install Dependencies
+
 ```bash
 cd backend
 npm install
 ```
 
 ### 3. Environment Configuration
+
 ```bash
 # Update .env file with your database credentials
 DATABASE_URL="postgresql://postgres:your-password@localhost:5433/rfid_access_control"
@@ -25,6 +28,7 @@ JWT_SECRET="your-super-secure-jwt-secret"
 ```
 
 ### 4. Database Migration & Seeding
+
 ```bash
 # Create and run initial migration
 npx prisma migrate dev --name init
@@ -37,6 +41,7 @@ npm run db:studio
 ```
 
 ### 5. Start Development Server
+
 ```bash
 npm run dev
 ```
@@ -66,6 +71,7 @@ After seeding, you can login with:
 ## 📊 API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/login` - User login
 - `POST /api/auth/logout` - User logout
 - `GET /api/auth/profile` - Get user profile
@@ -74,6 +80,7 @@ After seeding, you can login with:
 - `POST /api/auth/reset-password` - Reset password
 
 ### Users
+
 - `GET /api/users` - List all users (Admin+)
 - `POST /api/users` - Create new user (Admin+)
 - `GET /api/users/:id` - Get user by ID
@@ -82,6 +89,7 @@ After seeding, you can login with:
 - `GET /api/users/:id/stats` - Get user statistics
 
 ### Access Control
+
 - `POST /api/lock/access-attempt` - Log access attempt (Public)
 - `GET /api/lock/access-logs` - Get access logs
 - `GET /api/lock/access-logs/export` - Export logs as CSV (Manager+)
@@ -127,6 +135,7 @@ backend/
 ## 🐳 Docker Deployment
 
 Create `Dockerfile`:
+
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
@@ -141,16 +150,19 @@ CMD ["npm", "start"]
 ## 🔧 Production Configuration
 
 1. **Environment Variables**:
+
    - Set `NODE_ENV=production`
    - Use strong JWT secrets
    - Configure proper database credentials
 
 2. **Database**:
+
    - Use connection pooling
    - Enable SSL for production databases
    - Regular backups
 
 3. **Security**:
+
    - Use HTTPS in production
    - Configure proper CORS origins
    - Set up proper firewall rules

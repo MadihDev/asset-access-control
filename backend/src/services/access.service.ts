@@ -183,8 +183,8 @@ class AccessService {
     const sortDir: 'asc' | 'desc' = (typeof query.sortOrder === 'string' && allowedSortOrders.has(query.sortOrder)) ? (query.sortOrder as 'asc' | 'desc') : 'desc'
 
   const skip = (pageNum - 1) * limitNum
-  const { userId, lockId, result, accessType, startDate, endDate } = query
-    const where: any = {}
+      const { userId, lockId, result, accessType, startDate, endDate, cityId } = query
+  const where: any = {}
 
     if (userId) {
       where.userId = userId
@@ -192,6 +192,9 @@ class AccessService {
 
     if (lockId) {
       where.lockId = lockId
+    }
+    if (query.addressId) {
+      where.lock = { ...(where.lock || {}), addressId: query.addressId }
     }
 
     if (result) {
@@ -211,6 +214,10 @@ class AccessService {
         where.timestamp.lte = new Date(endDate)
       }
     }
+
+      if (cityId) {
+        where.cityId = cityId
+      }
 
     const [accessLogs, total] = await Promise.all([
       prisma.accessLog.findMany({
@@ -263,7 +270,7 @@ class AccessService {
     }
   }
 
-  async getAccessStats(timeframe: 'day' | 'week' | 'month' = 'week'): Promise<{
+  async getAccessStats(timeframe: 'day' | 'week' | 'month' = 'week', cityId?: string): Promise<{
     totalAttempts: number
     successfulAttempts: number
     failedAttempts: number
@@ -291,7 +298,8 @@ class AccessService {
       where: {
         timestamp: {
           gte: startDate
-        }
+        },
+        ...(cityId ? { cityId } : {})
       },
       include: {
         user: {
@@ -365,8 +373,13 @@ class AccessService {
     deviceInfo?: Record<string, any>
     metadata?: Record<string, any>
   }): Promise<AccessLog> {
-    const accessLog = await prisma.accessLog.create({
-      data,
+      // Derive cityId from lock->address for denormalization
+      const lockCity = await prisma.lock.findUnique({
+        where: { id: data.lockId },
+        select: { address: { select: { cityId: true } } }
+      })
+      const accessLog = await prisma.accessLog.create({
+        data: { ...data, cityId: lockCity?.address?.cityId },
       include: {
         user: true,
         rfidKey: true,
@@ -381,6 +394,20 @@ class AccessService {
         }
       }
     })
+
+    // Emit WebSocket events to the city's room, if city is known
+    try {
+      const cityId = accessLog.lock?.address?.city?.id
+      if (typeof cityId === 'string' && cityId.length > 0) {
+        const { id, result, accessType, timestamp, userId, rfidKeyId, lockId } = accessLog as any
+        const payload = { id, result, accessType, timestamp, userId, rfidKeyId, lockId }
+        const { emitToCity } = await import('../lib/ws')
+        emitToCity(cityId, 'access.created', payload)
+        emitToCity(cityId, 'kpi:update', { reason: 'access.created' })
+      }
+    } catch (_err) {
+      // best-effort only
+    }
 
     return accessLog as AccessLog
   }

@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react' 
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react' 
+import { Link } from 'react-router-dom'
 import api from '../services/api'
 import type { AxiosError } from 'axios'
+import { useToast } from '../hooks/useToast'
+import { useCity } from '../contexts/CityContext'
 
 interface User {
   id: string
@@ -23,15 +26,27 @@ interface Stats {
   onlineLocks: number
   activeKeys?: number
   recentAccessLogs: AccessLog[]
+  locations?: Array<{
+    addressId: string
+    name: string
+    cityId: string
+    totalLocks: number
+    activeLocks: number
+    activeUsers: number
+    activeKeys: number
+    totalAttempts?: number
+    successfulAttempts?: number
+    successRate?: number
+  }>
 }
 
 interface AccessLog {
   id: string
   timestamp: string
-  user: {
-    firstName: string
-    lastName: string
-  }
+  user?: {
+    firstName?: string
+    lastName?: string
+  } | null
   lock: {
     name: string
   }
@@ -50,32 +65,65 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { success: toastSuccess, error: toastError } = useToast()
+  const { selectedCityId } = useCity()
+  const [sortBy, setSortBy] = useState<'name' | 'activeUsers' | 'successRate'>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  // Sort locations memoized at top-level to respect React hooks rules
+  const sortedLocations = useMemo(() => {
+    const arr = [...(stats.locations || [])]
+    arr.sort((a, b) => {
+      let av: number | string = a.name
+      let bv: number | string = b.name
+      if (sortBy === 'activeUsers') { av = a.activeUsers; bv = b.activeUsers }
+      if (sortBy === 'successRate') { av = a.successRate || 0; bv = b.successRate || 0 }
+      if (typeof av === 'string' && typeof bv === 'string') {
+        const cmp = av.localeCompare(bv)
+        return sortOrder === 'asc' ? cmp : -cmp
+      }
+      const na = Number(av) || 0; const nb = Number(bv) || 0
+      return sortOrder === 'asc' ? na - nb : nb - na
+    })
+    return arr
+  }, [stats.locations, sortBy, sortOrder])
+
+  // Track latest request to avoid stale responses overriding state
+  const latestReqIdRef = useRef(0)
+  const fetchStats = useCallback(async () => {
+    const reqId = ++latestReqIdRef.current
+    try {
+      setLoading(true)
+      setError(null)
+      // Append selected city if present
+      const cityId = selectedCityId || undefined
+      const { data } = await api.get('/api/dashboard', { params: cityId ? { cityId } : {} })
+      if (reqId === latestReqIdRef.current) {
+        setStats(data.data as Stats)
+      }
+    } catch (err) {
+      if (reqId !== latestReqIdRef.current) return // ignore stale errors
+      const axiosErr = err as AxiosError<{ error?: string }>
+      const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5001'
+      const message = axiosErr?.response?.data?.error 
+        || (axiosErr?.response?.status === 401 ? 'Session expired or unauthorized. Please log in again.' 
+        : !axiosErr?.response ? `Cannot reach API at ${baseUrl}` : 'Failed to load dashboard')
+      setError(message)
+    } finally {
+      if (reqId === latestReqIdRef.current) setLoading(false)
+    }
+  }, [selectedCityId])
 
   useEffect(() => {
     let mounted = true
-    const fetchStats = async () => {
-      try {
-        setError(null)
-        // If token payload or stored context includes cityId, append it
-        const storedCityId = localStorage.getItem('cityId') || undefined
-        const { data } = await api.get('/api/dashboard', { params: storedCityId ? { cityId: storedCityId } : {} })
-        if (!mounted) return
-        setStats(data.data as Stats)
-      } catch (err) {
-        if (!mounted) return
-        const axiosErr = err as AxiosError<{ error?: string }>
-        const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5001'
-        const message = axiosErr?.response?.data?.error 
-          || (axiosErr?.response?.status === 401 ? 'Session expired or unauthorized. Please log in again.' 
-          : !axiosErr?.response ? `Cannot reach API at ${baseUrl}` : 'Failed to load dashboard')
-        setError(message)
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
     fetchStats()
-    return () => { mounted = false }
-  }, [])
+    const onRefresh = () => { if (mounted) fetchStats() }
+    window.addEventListener('dashboard:refresh', onRefresh)
+    return () => {
+      mounted = false
+      window.removeEventListener('dashboard:refresh', onRefresh)
+    }
+  }, [fetchStats])
 
   const getStatusBadge = (result: string) => {
     switch (result) {
@@ -109,6 +157,39 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     )
   }
 
+  const simulateAccess = async () => {
+    try {
+      // Ensure we have a valid-looking lockId (required by backend validation)
+      let lockId = localStorage.getItem('lastLockId')
+      const cityId = selectedCityId || undefined
+      if (!lockId) {
+        const { data } = await api.get('/api/lock', { params: cityId ? { cityId } : {} })
+        const locks: Array<{ id: string; name: string }> = Array.isArray(data?.data) ? data.data : []
+        if (!locks.length) {
+          toastError?.('No locks available in your scope to simulate an access.', 'Simulation error')
+          return
+        }
+        lockId = locks[0].id
+        localStorage.setItem('lastLockId', lockId)
+      }
+
+      const cardId = localStorage.getItem('lastCardId') || 'CARD-DEMO'
+
+      const body = {
+        cardId,
+        lockId,
+        accessType: 'RFID_CARD',
+        deviceInfo: { deviceModel: 'Dev-Client', firmwareVersion: 'dev', signalStrength: 100 }
+      }
+      await api.post('/api/lock/access-attempt', body)
+      toastSuccess?.('Access attempt simulated', 'Simulation')
+      // On success or fail, the server emits events; we’ll just refresh too
+      fetchStats()
+    } catch {
+      toastError?.('Failed to simulate access attempt', 'Simulation error')
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -117,6 +198,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         <p className="mt-2 text-gray-600">
           Welcome back, {user.firstName} {user.lastName}
         </p>
+        {import.meta.env.DEV && (
+          <div className="mt-4">
+            <button onClick={simulateAccess} className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700">
+              Simulate access attempt (dev)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}
@@ -253,7 +341,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                       {formatTime(log.timestamp)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.user.firstName} {log.user.lastName}
+                      {log.user?.firstName || 'Unknown'} {log.user?.lastName || ''}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {log.lock.name}
@@ -271,6 +359,74 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* Locations KPIs */}
+      {!!stats.locations?.length && (
+        <div className="bg-white rounded-lg shadow-md">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Locations</h3>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-700">Sort by</label>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'name' | 'activeUsers' | 'successRate')} className="rounded-md border-gray-300 text-sm">
+                  <option value="name">Name</option>
+                  <option value="activeUsers">Active Users</option>
+                  <option value="successRate">Success Rate</option>
+                </select>
+                <button onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')} className="text-sm px-2 py-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50">
+                  {sortOrder === 'asc' ? 'Asc' : 'Desc'}
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active Users</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active Keys</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Locks (online/total)</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+                    <th className="px-6 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedLocations.map((loc) => (
+                    <tr key={loc.addressId}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <Link
+                          to={`/location/${encodeURIComponent(loc.addressId)}${selectedCityId ? `?cityId=${encodeURIComponent(selectedCityId)}` : ''}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {loc.name}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{loc.activeUsers}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{loc.activeKeys}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{loc.activeLocks}/{loc.totalLocks}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{typeof loc.successRate === 'number' ? `${loc.successRate.toFixed(0)}%` : '—'} ({loc.successfulAttempts || 0}/{loc.totalAttempts || 0})</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <Link
+                          to={`/access-logs?addressId=${encodeURIComponent(loc.addressId)}`}
+                          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        >
+                          View logs
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+      {Array.isArray(stats.locations) && stats.locations.length === 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Locations</h3>
+          <p className="text-gray-600">No locations found for the selected scope.</p>
+        </div>
+      )}
     </div>
   )
 }

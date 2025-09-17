@@ -25,7 +25,7 @@ router.get('/with-permissions', requireManagerOrAbove, UserController.getUsersWi
 // POST /api/users - Create new user (Admin only)
 router.post('/', requireAdmin, validateCreateUser, UserController.createUser)
 
-// GET /api/users/:id - Get user by ID
+// GET /api/users/:id - Get user by ID (self or Manager+ enforced in controller)
 router.get('/:id', validateUUID, UserController.getUserById)
 
 // PUT /api/users/:id - Update user (Admin only)
@@ -34,7 +34,7 @@ router.put('/:id', requireAdmin, validateUUID, validateUpdateUser, UserControlle
 // DELETE /api/users/:id - Delete user (Admin only)
 router.delete('/:id', requireAdmin, validateUUID, UserController.deleteUser)
 
-// GET /api/users/:id/stats - Get user statistics
+// GET /api/users/:id/stats - Get user statistics (self or Manager+ enforced in controller)
 router.get('/:id/stats', validateUUID, UserController.getUserStats)
 
 export default router

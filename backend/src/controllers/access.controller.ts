@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import AccessService from '../services/access.service'
 import { AccessAttemptRequest, AccessLogQuery, AuditAction } from '../types'
 import AuditService from '../services/audit.service'
+import { getEffectiveCityId } from '../lib/scope'
 
 class AccessController {
   async logAccessAttempt(req: Request, res: Response): Promise<void> {
@@ -25,7 +26,8 @@ class AccessController {
   async getAccessLogs(req: Request, res: Response): Promise<void> {
     try {
       const query: AccessLogQuery = req.query as any
-      const result = await AccessService.getAccessLogs(query)
+      const effectiveCityId = getEffectiveCityId(req)
+      const result = await AccessService.getAccessLogs({ ...query, cityId: effectiveCityId ?? query.cityId })
       
       res.status(200).json({
         success: true,
@@ -49,7 +51,8 @@ class AccessController {
         ? (timeframe as 'day' | 'week' | 'month') 
         : 'week'
 
-      const stats = await AccessService.getAccessStats(selectedTimeframe)
+      const effectiveCityId = getEffectiveCityId(req)
+      const stats = await AccessService.getAccessStats(selectedTimeframe, effectiveCityId)
       
       res.status(200).json({
         success: true,
@@ -67,9 +70,10 @@ class AccessController {
   async exportAccessLogs(req: Request, res: Response): Promise<void> {
     try {
       const query: AccessLogQuery = req.query as any
+      const effectiveCityId = getEffectiveCityId(req)
       
       // Set a high limit for export
-      const exportQuery = { ...query, limit: 10000, page: 1 }
+      const exportQuery = { ...query, limit: 10000, page: 1, cityId: effectiveCityId ?? query.cityId }
       const result = await AccessService.getAccessLogs(exportQuery)
       
       // Set headers for CSV download

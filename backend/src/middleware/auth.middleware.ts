@@ -36,7 +36,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     req.user = user
     next()
-  } catch (error) {
+  } catch (_error) {
     res.status(401).json({
       success: false,
       error: 'Token validation failed'
@@ -85,7 +85,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     }
 
     next()
-  } catch (error) {
+  } catch (_error) {
     // Continue without authentication for optional auth
     next()
   }

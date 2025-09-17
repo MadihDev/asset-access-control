@@ -30,12 +30,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (username: string, password: string, cityId: string) => {
     const { data } = await api.post('/api/auth/login', { username, password, cityId })
     const token: string = data.data.accessToken
+    const rtoken: string = data.data.refreshToken
     localStorage.setItem('token', token)
+    localStorage.setItem('refreshToken', rtoken)
     setUser(data.data.user as AuthUser)
   }, [])
 
   const logout = useCallback(() => {
     localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
     setUser(null)
   }, [])
 

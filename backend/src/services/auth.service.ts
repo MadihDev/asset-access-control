@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs'
 import prisma from '../lib/prisma'
 import logger from '../lib/logger'
 import { LoginRequest, LoginResponse, JWTPayload, UserRole, User } from '../types'
+import crypto from 'node:crypto'
+import type { Prisma } from '@prisma/client'
 
 class AuthService {
   private readonly jwtSecret: string
@@ -65,9 +67,10 @@ class AuthService {
       lastLoginAt: rest.lastLoginAt ?? undefined
     }
 
-    // Generate tokens
-    const accessToken = this.generateAccessToken(responseUser)
-    const refreshToken = this.generateRefreshToken(responseUser)
+  // Generate tokens
+  const accessToken = this.generateAccessToken(responseUser)
+  const issued = await this.issueRefreshToken(responseUser)
+  const refreshToken = issued.token
 
     return {
       user: responseUser,
@@ -78,33 +81,42 @@ class AuthService {
   }
 
   async logout(userId: string): Promise<void> {
-    // In a production app, you might want to blacklist the token
-    // For now, we'll just update the user's last login time
-    await prisma.user.update({
-      where: { id: userId },
-      data: { lastLoginAt: new Date() }
-    })
+    // Revoke all active refresh tokens for the user and update lastLoginAt
+    await prisma.$transaction([
+      prisma.refreshToken.updateMany({
+        where: { userId, isRevoked: false },
+        data: { isRevoked: true }
+      }),
+      prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } })
+    ])
   }
 
   async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       const payload = jwt.verify(refreshToken, this.jwtSecret) as JWTPayload
-      
-      const user = await prisma.user.findUnique({
-        where: { id: payload.userId }
+      if (!payload.jti) throw new Error('Invalid refresh token payload')
+
+      // Validate token in DB
+      const stored = await prisma.refreshToken.findUnique({ where: { jti: payload.jti } })
+      if (!stored || stored.isRevoked) throw new Error('Refresh token revoked')
+      if (stored.expiresAt.getTime() <= Date.now()) throw new Error('Refresh token expired')
+
+      // Load user
+      const user = await prisma.user.findUnique({ where: { id: payload.userId } })
+      if (!user || !user.isActive) throw new Error('Invalid refresh token')
+
+      // Rotate: revoke old, issue new inside a transaction
+      const result = await prisma.$transaction(async (tx: any) => {
+        const newToken = await this.issueRefreshToken(user, tx)
+        await tx.refreshToken.update({
+          where: { jti: payload.jti },
+          data: { isRevoked: true, replacedById: newToken.recordId }
+        })
+        return newToken.token
       })
 
-      if (!user || !user.isActive) {
-        throw new Error('Invalid refresh token')
-      }
-
       const newAccessToken = this.generateAccessToken(user)
-      const newRefreshToken = this.generateRefreshToken(user)
-
-      return {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken
-      }
+      return { accessToken: newAccessToken, refreshToken: result }
     } catch (_error) {
       throw new Error('Invalid refresh token')
     }
@@ -194,16 +206,29 @@ class AuthService {
     })
   }
 
-  private generateRefreshToken(user: Pick<User, 'id' | 'email' | 'role'>): string {
+  private async issueRefreshToken(
+    user: Pick<User, 'id' | 'email' | 'role'>,
+    tx?: Prisma.TransactionClient
+  ): Promise<{ token: string; recordId: string; jti: string }> {
+    const jti = crypto.randomUUID()
+    const seconds = this.parseExpiresToSeconds(this.refreshExpiresIn)
+    const expiresAt = new Date(Date.now() + seconds * 1000)
+
+    const client = (tx || prisma) as any
+    const created = await client.refreshToken.create({
+      data: { jti, userId: user.id, expiresAt },
+      select: { id: true }
+    })
+
     const payload: JWTPayload = {
       userId: user.id,
       email: user.email,
-      role: user.role as unknown as UserRole
+      role: user.role as unknown as UserRole,
+      jti
     }
 
-    return jwt.sign(payload, this.jwtSecret, {
-      expiresIn: this.parseExpiresToSeconds(this.refreshExpiresIn)
-    })
+    const token = jwt.sign(payload, this.jwtSecret, { expiresIn: seconds })
+    return { token, recordId: created.id, jti }
   }
 
   private getTokenExpirationTime(): number {

@@ -4,13 +4,36 @@ import { CreatePermissionRequest, UserPermission } from '../types'
 const prisma = new (Prisma as any).PrismaClient()
 
 class PermissionService {
-  async list(userId?: string, lockId?: string): Promise<UserPermission[]> {
+  async getUserCity(userId: string): Promise<string | null> {
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { cityId: true } })
+    return u?.cityId ?? null
+  }
+
+  async getLockCity(lockId: string): Promise<string | null> {
+    const l = await prisma.lock.findUnique({ where: { id: lockId }, select: { address: { select: { cityId: true } } } })
+    return l?.address?.cityId ?? null
+  }
+
+  async getPermissionCities(id: string): Promise<{ userCityId: string | null; lockCityId: string | null }> {
+    const p = await prisma.userPermission.findUnique({
+      where: { id },
+      select: { user: { select: { cityId: true } }, lock: { select: { address: { select: { cityId: true } } } } }
+    })
+    return { userCityId: p?.user?.cityId ?? null, lockCityId: p?.lock?.address?.cityId ?? null }
+  }
+  async list(userId?: string, lockId?: string, cityId?: string): Promise<UserPermission[]> {
     const where: any = {}
     if (userId) where.userId = userId
     if (lockId) where.lockId = lockId
+    if (cityId) {
+      where.AND = [
+        { user: { cityId } },
+        { lock: { address: { cityId } } }
+      ]
+    }
     const items = await prisma.userPermission.findMany({
       where,
-      include: { user: true, lock: true },
+      include: { user: true, lock: { include: { address: { include: { city: true } } } } },
       orderBy: { createdAt: 'desc' }
     })
     return items as UserPermission[]

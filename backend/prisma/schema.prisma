@@ -28,6 +28,7 @@ model User {
   permissions  UserPermission[]
   createdBy    User?            @relation("UserCreator", fields: [createdById], references: [id])
   createdUsers User[]           @relation("UserCreator")
+  refreshTokens RefreshToken[]
 
   @@map("users")
 }
@@ -123,11 +124,17 @@ model AccessLog {
   userId     String?
   rfidKeyId  String?
   lockId     String
+  // Denormalized cityId for fast filtering/indexing
+  cityId     String?
   lock       Lock         @relation(fields: [lockId], references: [id])
   rfidKey    RFIDKey?     @relation(fields: [rfidKeyId], references: [id])
   user       User?        @relation(fields: [userId], references: [id])
 
   @@map("access_logs")
+  @@index([cityId, timestamp], map: "idx_access_logs_city_ts")
+  @@index([result], map: "idx_access_logs_result")
+  @@index([userId], map: "idx_access_logs_user")
+  @@index([lockId], map: "idx_access_logs_lock")
 }
 
 model AuditLog {
@@ -217,4 +224,23 @@ enum NotificationType {
   SMS
   PUSH
   WEBHOOK
+}
+
+// Refresh tokens for rotation and revocation
+model RefreshToken {
+  id            String   @id @default(cuid())
+  jti           String   @unique
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  isRevoked     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  replacedById  String?
+  replacedBy    RefreshToken? @relation("RefreshReplacedBy", fields: [replacedById], references: [id])
+  // back relation to allow easy traversal (not required by app code)
+  replacedTokens RefreshToken[] @relation("RefreshReplacedBy")
+
+  @@index([userId, isRevoked], map: "idx_refresh_tokens_user_revoked")
+  @@index([expiresAt], map: "idx_refresh_tokens_expires")
+  @@map("refresh_tokens")
 }

@@ -1,9 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { useCity } from '../contexts/CityContext'
 
 const Navigation: React.FC<{ user: { id: string; email: string; firstName: string; lastName: string; role: string } }> = ({ user }) => {
   const { logout } = useAuth()
+  const { cities, selectedCityId, setSelectedCityId } = useCity()
   const location = useLocation()
+  const [wsConnected, setWsConnected] = useState<boolean>(false)
 
   const isActive = (path: string) => {
     return location.pathname === path || (path === '/dashboard' && location.pathname === '/')
@@ -11,7 +15,19 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
 
   const canAccessUserManagement = ['SUPER_ADMIN', 'ADMIN'].includes(user.role)
   const canAccessSettings = ['SUPER_ADMIN', 'ADMIN', 'SUPERVISOR'].includes(user.role)
+  const canAccessLocks = ['SUPER_ADMIN', 'ADMIN', 'SUPERVISOR'].includes(user.role)
   const canAccessAudit = ['SUPER_ADMIN', 'ADMIN', 'SUPERVISOR'].includes(user.role)
+
+  useEffect(() => {
+    const onConnected = () => setWsConnected(true)
+    const onDisconnected = () => setWsConnected(false)
+    window.addEventListener('ws:connected', onConnected)
+    window.addEventListener('ws:disconnected', onDisconnected)
+    return () => {
+      window.removeEventListener('ws:connected', onConnected)
+      window.removeEventListener('ws:disconnected', onDisconnected)
+    }
+  }, [])
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -53,6 +69,19 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
               >
                 Access Logs
               </Link>
+
+              {canAccessLocks && (
+                <Link
+                  to="/locks"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    isActive('/locks')
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Locks
+                </Link>
+              )}
 
               {canAccessAudit && (
                 <Link
@@ -97,8 +126,29 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
+            {/* City selector for SUPER_ADMIN */}
+            {user.role === 'SUPER_ADMIN' && (
+              <div className="hidden md:flex items-center">
+                <label htmlFor="city-select" className="sr-only">City</label>
+                <select
+                  id="city-select"
+                  className="mr-3 px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700"
+                  value={selectedCityId || ''}
+                  onChange={(e) => setSelectedCityId(e.target.value || null)}
+                >
+                  <option value="">All Cities</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             {/* User Info */}
             <div className="hidden md:flex items-center space-x-2">
+              {/* WebSocket status indicator */}
+              <div className="flex items-center mr-2" title={wsConnected ? 'Live updates on' : 'Live updates offline'}>
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+              </div>
               <div className="text-sm">
                 <div className="font-medium text-gray-900">
                   {user.firstName} {user.lastName}
@@ -150,6 +200,19 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
           >
             Access Logs
           </Link>
+
+          {canAccessLocks && (
+            <Link
+              to="/locks"
+              className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
+                isActive('/locks')
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Locks
+            </Link>
+          )}
 
           {canAccessAudit && (
             <Link

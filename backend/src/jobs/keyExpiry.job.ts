@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma'
 import AuditService from '../services/audit.service'
 import { AuditAction } from '../types'
+import { emitToCity } from '../lib/ws'
 
 let timer: NodeJS.Timeout | null = null
 
@@ -36,6 +37,29 @@ export async function runKeyExpiryCheckOnce(): Promise<{ deactivatedCount: numbe
       }).catch(() => undefined)
     )
   )
+
+  // Emit WebSocket events grouped by city
+  try {
+    const users: { id: string; cityId: string | null }[] = await prisma.user.findMany({
+      where: { id: { in: expiredActiveKeys.map((k) => k.userId) } },
+      select: { id: true, cityId: true }
+    })
+    const cityByUser = new Map<string, string | null>(users.map((u: { id: string; cityId: string | null }) => [u.id, u.cityId]))
+    const affectedCities = new Set<string>()
+    for (const key of expiredActiveKeys) {
+      const cityId = cityByUser.get(key.userId)
+      if (typeof cityId === 'string' && cityId.length > 0) {
+        emitToCity(cityId, 'key.expired', { keyId: key.id, cardId: key.cardId, userId: key.userId, expiredAt: key.expiresAt })
+        affectedCities.add(cityId)
+      }
+    }
+    // Ask dashboards in affected cities to refresh KPIs
+    for (const cityId of affectedCities) {
+      emitToCity(cityId, 'kpi:update', { reason: 'key.expired' })
+    }
+  } catch (_err) {
+    // best-effort; ignore
+  }
 
   return { deactivatedCount: expiredActiveKeys.length }
 }

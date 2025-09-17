@@ -1,4 +1,4 @@
-// ESLint flat config for backend (CommonJS variant for Node CJS projects)
+// ESLint flat config for backend (CommonJS for Node CJS projects)
 // Using flat config with ESLint v9
 /* eslint-disable @typescript-eslint/no-var-requires */
 const js = require('@eslint/js')
@@ -14,7 +14,8 @@ module.exports = [
     files: ['src/**/*.ts', '__tests__/**/*.ts'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'commonjs',
+      // Use module so TS import/export syntax is parsed correctly
+      sourceType: 'module',
       globals: {
         ...globals.node,
         ...globals.jest,

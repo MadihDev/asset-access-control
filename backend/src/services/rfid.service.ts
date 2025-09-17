@@ -2,9 +2,12 @@ import prisma from '../lib/prisma'
 import { CreateRFIDKeyRequest, RFIDKey } from '../types'
 
 class RFIDService {
-  async list(userId?: string): Promise<RFIDKey[]> {
+  async list(userId?: string, cityId?: string): Promise<RFIDKey[]> {
     const where: any = {}
     if (userId) where.userId = userId
+    if (cityId) {
+      where.user = { cityId }
+    }
     const keys = await prisma.rFIDKey.findMany({ where, include: { user: true }, orderBy: { issuedAt: 'desc' } })
     return keys as RFIDKey[]
   }

@@ -9,8 +9,8 @@ This document combines the target system design with a quick runtime snapshot of
 - Database: PostgreSQL 17 on `localhost:5433`, DB name `rfid_access_control`
 - ORM: Prisma 5 (client generated)
 - CSS: Tailwind CSS v4 with PostCSS pipeline
- - Background jobs: Key expiry watcher auto-deactivates expired RFID keys
-	 - Env: `KEY_EXPIRY_JOB_INTERVAL_MS` (default 300000 ms = 5 minutes)
+- Background jobs: Key expiry watcher auto-deactivates expired RFID keys
+  - Env: `KEY_EXPIRY_JOB_INTERVAL_MS` (default 300000 ms = 5 minutes)
 
 ### Run commands (Windows PowerShell)
 
@@ -27,6 +27,7 @@ npm run dev
 ```
 
 ### Tailwind v4 note
+
 - `postcss.config.js` uses `@tailwindcss/postcss`
 - `src/index.css` uses `@import "tailwindcss";` (v4 style)
 - `tailwind.config.js` scans `./index.html` and `./src/**/*.{js,ts,jsx,tsx}`
@@ -359,20 +360,21 @@ This section captures the newly introduced functional requirements and how they 
 
 - Login Inputs: City, Username, Password
 - Validation rules:
-	- `cityId` must reference an active City
-	- `username/password` checked for a user belonging to the selected `cityId`
-	- User must be active (`isActive = true`)
+  - `cityId` must reference an active City
+  - `username/password` checked for a user belonging to the selected `cityId`
+  - User must be active (`isActive = true`)
 - API Contract:
-	- `POST /api/auth/login` body: `{ username: string, password: string, cityId: string }`
-	- Success: `{ user, accessToken, refreshToken, expiresIn }`
-	- On success, the client stores `accessToken` and loads profile/permissions
+  - `POST /api/auth/login` body: `{ username: string, password: string, cityId: string }`
+  - Success: `{ user, accessToken, refreshToken, expiresIn }`
+  - On success, the client stores `accessToken` and loads profile/permissions
 - City Directory:
-	- `GET /api/city` → returns active cities for the login dropdown
-	- Current deployment constraint: Only Netherlands cities are returned (country = "Netherlands")
+  - `GET /api/city` → returns active cities for the login dropdown
+  - Current deployment constraint: Only Netherlands cities are returned (country = "Netherlands")
 - Redirect after login:
-	- Client redirects the user to their assigned location(s) within the selected city (e.g., dashboard path filtered by `cityId` and user’s assignments).
+  - Client redirects the user to their assigned location(s) within the selected city (e.g., dashboard path filtered by `cityId` and user’s assignments).
 
 Data model notes:
+
 - `User.cityId` (nullable) relates users to the City they belong to
 - `City` → `Address` → `Lock` hierarchy already exists; this flow leverages it
 
@@ -381,60 +383,176 @@ Data model notes:
 Once authenticated, the dashboard shows the user’s location(s) for their city, along with live indicators:
 
 - Per location KPIs:
-	- Active Users: users with recent activity or holding a currently valid key (configurable definition, e.g., last activity within 15 minutes OR any non-expired key)
-	- Active Locks: locks flagged `isOnline = true` in the last health check/heartbeat
-	- Active Keys: keys with `isActive = true` and `expiresAt > now()` for that location
+  - Active Users: users with recent activity or holding a currently valid key (configurable definition, e.g., last activity within 15 minutes OR any non-expired key)
+  - Active Locks: locks flagged `isOnline = true` in the last health check/heartbeat
+  - Active Keys: keys with `isActive = true` and `expiresAt > now()` for that location
 - Data sources:
-	- `AccessLog` stream and lock health updates (future WebSocket)
-	- `RFIDKey` validity window (see section 3)
+  - `AccessLog` stream and lock health updates (future WebSocket)
+  - `RFIDKey` validity window (see section 3)
 - Suggested API/flow:
-	- `GET /api/dashboard?cityId=...` returns summary with lists and counts filtered by city (and narrowed by user role/assignments)
-	- Real-time: WebSocket channel broadcasting lock online/offline events, key assignment/revocation, and access attempts to subscribed clients (scoped by city or permission)
+  - `GET /api/dashboard?cityId=...` returns summary with lists and counts filtered by city (and narrowed by user role/assignments)
+  - Real-time: WebSocket channel broadcasting lock online/offline events, key assignment/revocation, and access attempts to subscribed clients (scoped by city or permission)
 
 ### 3) Key & Lock Management
 
 - Associations:
-	- Each Lock may require a Key (RFID key) for access
-	- Each Key is assigned to a User
+  - Each Lock may require a Key (RFID key) for access
+  - Each Key is assigned to a User
 - Key expiry/auto-disconnect:
-	- Keys automatically expire/disconnect after 6 hours
-	- Implementation:
-		- Store `expiresAt` on `RFIDKey` (already present) and/or on issued key sessions
-		- Enforce validity in access checks (deny when `expiresAt <= now()` or `isActive = false`)
-		- Background job (cron/scheduler) to mark expired keys inactive and notify clients via WebSocket
+  - Keys automatically expire/disconnect after 6 hours
+  - Implementation:
+    - Store `expiresAt` on `RFIDKey` (already present) and/or on issued key sessions
+    - Enforce validity in access checks (deny when `expiresAt <= now()` or `isActive = false`)
+    - Background job (cron/scheduler) to mark expired keys inactive and notify clients via WebSocket
 - Admin controls:
-	- Revoke Key: set `isActive = false` (and optionally clear associations)
-	- Reassign Key: update `userId` and reset `issuedAt`/`expiresAt`
+  - Revoke Key: set `isActive = false` (and optionally clear associations)
+  - Reassign Key: update `userId` and reset `issuedAt`/`expiresAt`
 - Suggested APIs (existing endpoints can be extended):
-	- `POST /api/rfid/assign` → assign key to user with optional `expiresAt` (default now + 6h)
-	- `POST /api/rfid/revoke` → revoke key immediately
-	- `GET /api/lock/...` and `GET /api/permission/...` already provide access-related lists
+  - `POST /api/rfid/assign` → assign key to user with optional `expiresAt` (default now + 6h)
+  - `POST /api/rfid/revoke` → revoke key immediately
+  - `GET /api/lock/...` and `GET /api/permission/...` already provide access-related lists
 
 ### 4) System Roles & Access Scope
 
 - Roles:
-	- User: logs in and sees their assigned location(s) and locks; limited to their city
-	- Supervisor/Admin: can monitor all users, locks, and keys by city and by location
+  - User: logs in and sees their assigned location(s) and locks; limited to their city
+  - Supervisor/Admin: can monitor all users, locks, and keys by city and by location
 - Enforcement:
-	- Role checks are applied in middleware (e.g., `requireManagerOrAbove`, `requireAdmin`)
-	- City scope: filter queries by `cityId` derived from user context or request
-	- UI honors scope by showing only allowed locations/locks and management actions
+  - Role checks are applied in middleware (e.g., `requireManagerOrAbove`, `requireAdmin`)
+  - City scope: filter queries by `cityId` derived from user context or request
+  - UI honors scope by showing only allowed locations/locks and management actions
 
 ### Contracts, Edge Cases, and Success Criteria
 
 Contracts:
+
 - Login request: `{ username, password, cityId }` → 200 OK with tokens and user profile; 401 for invalid creds/city
 - City list: `GET /api/city` → `{ success, data: City[] }`
 - Dashboard request: accepts `cityId` and returns filtered stats and lists
 
 Edge cases:
+
 - City is inactive → block login
 - User not assigned to the given city → invalid credentials
 - Key expired mid-session → subsequent access attempts denied; UI updates via WebSocket
 - Lock offline → access attempts may return device error; dashboard reflects status
 
 Success criteria:
+
 - User can log in only when selecting their correct city and valid credentials
 - Post-login, user sees only their city’s assigned location(s)
 - Dashboard reflects “Active Users/Locks/Keys” with near real-time updates
 - Admin can revoke/reassign keys; revoked/expired keys are enforced immediately
+
+---
+
+## Location Overview & Admin Connect (Most important feature)
+
+This section consolidates the requirements to provide a single place per location (Address) to see active/inactive Users, Locks, and Keys, and to allow Admins to connect users with keys and locks from the same screen.
+
+Purpose
+
+- Per location (Address), provide:
+  - Users: Active vs Inactive (for that location)
+  - Locks: Online vs Offline, and Active vs Inactive
+  - Keys: Active vs Inactive (and who holds them)
+- Enable Admin actions in-context: assign/reassign keys, grant/revoke permissions between users and locks.
+
+What is already implemented (today)
+
+- Data model fully supports the feature:
+  - City → Address → Lock hierarchy; `UserPermission` (user↔lock) links; `RFIDKey` (assigned to user with `expiresAt`/`isActive`).
+- Backend capabilities:
+  - Dashboard exposes per-location KPIs: active users (last 15 min), active keys, online/total locks, success rate, attempts.
+  - Access Logs with filters (including `addressId`) and CSV export.
+  - Locks API with online/active flags; can filter by `addressId`.
+  - RFID key assign/revoke APIs; auto-expiration after ~6 hours; background job deactivates expired keys and emits events.
+  - Audit logs for key issue/revoke/expire and permission changes.
+  - City scoping enforced by role (Manager+ can cross-city with `cityId`; others scoped to their city).
+- Frontend capabilities:
+  - Dashboard shows location KPIs with sorting; links to Access Logs filtered by `addressId`.
+  - Users/Locks/Keys management UIs exist; keys can be assigned/revoked; permissions can be granted/revoked.
+  - Real-time updates via WebSocket for KPI refresh and key events.
+
+What needs to be updated (to deliver the feature end-to-end)
+
+1. Frontend: Location Details page (one screen per Address)
+
+   - Route: `/locations/:addressId` (linked from Dashboard “Locations” table).
+   - Sections/Tabs:
+     - Users (Active | Inactive)
+     - Locks (Online | Offline) and (Active | Inactive)
+     - Keys (Active | Inactive)
+   - Definitions (surface in UI tooltips/help):
+     - Active user (at location): has a valid permission to any lock at this address AND either
+       (a) holds an active RFID key (`isActive = true` and not expired), or
+       (b) has a successful access within the last 15 minutes.
+     - Inactive user: does not meet the above at this address.
+     - Active key: `isActive = true` AND (`expiresAt` is null OR `expiresAt > now`).
+     - Active lock: `isActive` flag; Online/Offline from `isOnline` heartbeat.
+   - Admin actions (contextual):
+     - On a User row: Assign/Reassign key; Grant/Revoke permission to one or more locks at this address.
+     - On a Lock row: View/Manage permitted users; Grant/Revoke.
+     - On a Key row: Assign to a user; Revoke.
+   - Real-time: reflect key assignment/revocation/expiry and lock online/offline changes without manual refresh.
+
+2. Backend: Location-scoped list endpoints (or reuse with additional filters)
+   Option A — Dedicated endpoints (clear, self-documenting API):
+
+   - `GET /api/location/:addressId/users`
+     - Query: `status=active|inactive` (optional), `page`, `limit`
+     - Returns users with computed `activeAtLocation` flag based on the definition above.
+   - `GET /api/location/:addressId/locks`
+     - Query: `status=online|offline|active|inactive` (multi-select), `page`, `limit`
+     - Returns locks for the address with `isActive`, `isOnline` flags.
+   - `GET /api/location/:addressId/keys`
+     - Query: `status=active|inactive`, `page`, `limit`
+     - Returns keys for users associated with this address (via permissions), with `isActive` and holder.
+   - Bulk actions for admin productivity:
+     - `POST /api/location/:addressId/permissions` — Body: `{ userIds: string[], lockIds: string[], canAccess?: boolean, validFrom?: Date, validTo?: Date }`
+     - `POST /api/location/:addressId/keys/assign` — Body: `{ assignments: Array<{ cardId: string, userId: string, expiresAt?: Date, name?: string }> }`
+
+   Option B — Reuse existing endpoints with small additions:
+
+   - Users: add filter `hasPermissionAtAddressId=<addressId>` to users listing.
+   - Locks: reuse `addressId` filter; add multi-status filters if missing.
+   - Keys: add `userIds[]` filter and `addressId` inference (keys whose owner has permission to any lock at `addressId`).
+   - Keep existing POSTs for permissions and RFID assign/revoke; add bulk variants.
+
+   Notes:
+
+   - All endpoints must continue to respect city scoping via `getEffectiveCityId(req)`.
+   - Add DB indexes as needed (e.g., `UserPermission.lockId`, `Lock.addressId`, `RFIDKey.userId`).
+
+3. UI/UX wiring
+
+   - Navigation: link Dashboard → Location Details; optional location selector.
+   - Filters: chips/toggles for Active/Inactive and Online/Offline; server-side pagination.
+   - Modals: assign/revoke/grant (support bulk); optimistic updates with toasts.
+
+4. Real-time updates
+
+   - Continue using city rooms; emit lightweight events when permissions or key assignments change at an address.
+   - Client for the current `addressId` listens and updates tables live.
+
+5. Acceptance criteria (done definition)
+   - For a given `addressId`, Admin can see three lists with counts:
+     - Users (Active/Inactive) matching definitions above.
+     - Locks (Online/Offline + Active/Inactive).
+     - Keys (Active/Inactive), including who holds each key.
+   - From this page, Admin can connect users⇄locks (permissions) and users⇄keys (assign), including bulk operations.
+   - Real-time changes (key revoke/assign/expire; lock online/offline; permission changes) update the lists without refresh.
+   - All actions and resulting state transitions generate appropriate audit entries.
+
+Risks & considerations
+
+- The “active user” definition can be ambiguous; the UI should expose both signals (recent success vs active key+permission) to avoid confusion.
+- Bulk operations should be rate-limited and audited; provide preview/confirmation.
+- Performance: prefer server-side filtering/pagination; consider caching for heavy dashboard/location queries.
+
+Suggested next steps
+
+- Backend: implement the three location list endpoints (or extend existing ones) and simple bulk endpoints for permissions and key assignment.
+- Frontend: build the Location Details page and wire actions; reuse existing table, filters, and modal components.
+- Tests: add integration tests for new endpoints; component tests for list filters and actions.
+- Docs: update backend README with new endpoints; add a short guide in frontend README for the Location Details workflow.

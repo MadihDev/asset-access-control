@@ -16,13 +16,15 @@ async function main() {
     prisma.rFIDKey.deleteMany(),
     prisma.lock.deleteMany(),
     prisma.address.deleteMany(),
-    prisma.city.deleteMany(),
+    // Note: defer city deletion until after users are removed
     prisma.notificationTemplate.deleteMany(),
     prisma.systemConfig.deleteMany(),
   ])
-  // Ensure self-references are safe (not strictly needed here but harmless)
-  await prisma.user.updateMany({ data: { createdById: null } })
+  // Detach users from FKs then remove users before deleting cities
+  await prisma.user.updateMany({ data: { createdById: null, cityId: null } })
   await prisma.user.deleteMany()
+  // Now it's safe to delete cities (no users or addresses reference them)
+  await prisma.city.deleteMany()
 
   // Create cities
   await prisma.city.createMany({
@@ -39,10 +41,11 @@ async function main() {
 
   // Get cities for relations
   const cityRecords = await prisma.city.findMany()
+  type CityRecord = (typeof cityRecords)[number]
 
   // Create addresses
-  const addresses = []
-  for (const city of cityRecords) {
+  const addresses: Array<{ street: string; number: string; zipCode: string; cityId: string }> = []
+  for (const city of cityRecords as CityRecord[]) {
     addresses.push(
       { street: 'Main Street', number: '123', zipCode: '10001', cityId: city.id },
       { street: 'Broadway', number: '456', zipCode: '10002', cityId: city.id },
@@ -55,12 +58,13 @@ async function main() {
 
   // Get addresses for relations
   const addressRecords = await prisma.address.findMany()
+  type AddressRecord = (typeof addressRecords)[number]
 
   // Create locks
   const lockTypes = ['DOOR', 'GATE', 'CABINET', 'ROOM'] as const
   type LockType = typeof lockTypes[number]
   const locks: Array<{ name: string; description?: string; deviceId: string; secretKey: string; lockType: LockType; addressId: string; isOnline: boolean }> = []
-  for (const address of addressRecords.slice(0, 10)) { // Limit to 10 locks
+  for (const address of (addressRecords as AddressRecord[]).slice(0, 10)) { // Limit to 10 locks
     const lockType: LockType = lockTypes[Math.floor(Math.random() * lockTypes.length)]
     locks.push({
       name: `Lock-${address.street}-${address.number}`,
@@ -80,11 +84,11 @@ async function main() {
   const hashedPassword = await bcrypt.hash('password123', 10)
   
   // Map demo users to specific cities for out-of-the-box city-aware login
-  const amsterdam = cityRecords.find((c) => c.name === 'Amsterdam')
-  const rotterdam = cityRecords.find((c) => c.name === 'Rotterdam')
-  const theHague = cityRecords.find((c) => c.name === 'The Hague')
-  const utrecht = cityRecords.find((c) => c.name === 'Utrecht')
-  const eindhoven = cityRecords.find((c) => c.name === 'Eindhoven')
+  const amsterdam = cityRecords.find((c: CityRecord) => c.name === 'Amsterdam')
+  const rotterdam = cityRecords.find((c: CityRecord) => c.name === 'Rotterdam')
+  const theHague = cityRecords.find((c: CityRecord) => c.name === 'The Hague')
+  const utrecht = cityRecords.find((c: CityRecord) => c.name === 'Utrecht')
+  const eindhoven = cityRecords.find((c: CityRecord) => c.name === 'Eindhoven')
 
   await prisma.user.createMany({
     data: [
@@ -143,18 +147,22 @@ async function main() {
   ]
   for (const uc of userCityMap) {
     if (!uc.cityId) continue
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await prisma.user.update({ where: { username: uc.username }, data: { cityId: uc.cityId } as any })
+    await prisma.user.update({
+      where: { username: uc.username },
+      data: { city: { connect: { id: uc.cityId } } }
+    })
   }
   console.log('✅ Assigned users to cities')
 
   // Get users and locks for relations
   const userRecords = await prisma.user.findMany()
   const lockRecords = await prisma.lock.findMany()
+  type UserRecord = (typeof userRecords)[number]
+  type LockRecord = (typeof lockRecords)[number]
 
   // Create RFID keys
-  const rfidKeys = []
-  for (const user of userRecords) {
+  const rfidKeys: Array<{ cardId: string; name: string; userId: string; expiresAt: Date }> = []
+  for (const user of userRecords as UserRecord[]) {
     rfidKeys.push({
       cardId: `CARD-${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
       name: `${user.firstName}'s Access Card`,
@@ -167,11 +175,11 @@ async function main() {
   console.log('✅ Created RFID keys')
 
   // Create user permissions (give users access to some locks)
-  const permissions = []
-  for (const user of userRecords) {
+  const permissions: Array<{ userId: string; lockId: string; validTo: Date }> = []
+  for (const user of userRecords as UserRecord[]) {
     // Admins get access to all locks
   if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
-      for (const lock of lockRecords) {
+  for (const lock of lockRecords as LockRecord[]) {
         permissions.push({
           userId: user.id,
           lockId: lock.id,
@@ -181,7 +189,7 @@ async function main() {
     } else {
       // Regular users get access to 2-3 random locks
       const numLocks = Math.floor(Math.random() * 2) + 2
-      const shuffledLocks = lockRecords.sort(() => 0.5 - Math.random())
+  const shuffledLocks = (lockRecords as LockRecord[]).slice().sort(() => 0.5 - Math.random())
       
       for (let i = 0; i < Math.min(numLocks, shuffledLocks.length); i++) {
         permissions.push({
@@ -197,7 +205,7 @@ async function main() {
   console.log('✅ Created user permissions')
 
   // Create sample access logs
-  const accessLogs = []
+  const accessLogs: Array<{ accessType: AccessType; result: AccessResult; timestamp: Date; userId: string | null; rfidKeyId: string; lockId: string; deviceInfo: { deviceModel: string; firmwareVersion: string; signalStrength: number } } > = []
   const rfidKeyRecords = await prisma.rFIDKey.findMany({ include: { user: true } })
   
   for (let i = 0; i < 50; i++) {

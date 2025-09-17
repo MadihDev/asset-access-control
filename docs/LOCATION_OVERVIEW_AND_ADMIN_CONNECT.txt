@@ -1,0 +1,99 @@
+RFID Access Control — Location Overview & Admin Connect (Plain Text)
+
+Purpose
+- Provide a single place per location (Address) to see:
+  - Users: Active vs Inactive (for that location)
+  - Locks: Online vs Offline and Active vs Inactive
+  - Keys: Active vs Inactive (and who holds them)
+- Allow Admins to connect users with keys and locks (assign keys, grant/revoke lock permissions) from the same screen.
+
+What is already implemented (today)
+- Data model supports everything needed:
+  - City -> Address -> Lock hierarchy; UserPermission (user↔lock); RFIDKey (assigned to user with expiresAt/isActive)
+- Backend capabilities:
+  - Dashboard returns per-location KPIs: active users (last 15 min), active keys, online/total locks, success rate, attempts
+  - Access Logs with filters (including addressId) and CSV export
+  - Locks API with online/active flags; can filter by addressId
+  - RFID Key assignment/revoke; auto-expiration after ~6 hours; background job deactivates expired keys and emits events
+  - Audit logs for key issue/revoke/expire and permission changes
+  - City scoping enforced by role (Manager+ can cross-city with cityId; others are scoped to their city)
+- Frontend capabilities:
+  - Dashboard shows location KPIs with sorting, links to Access Logs filtered by addressId
+  - Users/Locks/Keys management screens exist; keys can be assigned/revoked; permissions can be granted/revoked
+  - Real-time updates (WebSocket) for KPI refresh and key events
+
+What needs to be updated (to deliver the “most important feature” fully)
+1) Frontend: New Location Details page (one screen per Address)
+   - Route: /locations/:addressId (linked from Dashboard “Locations” list)
+   - Tabs (or sections):
+     - Users (Active | Inactive)
+     - Locks (Online | Offline) and (Active | Inactive)
+     - Keys (Active | Inactive)
+   - Definitions shown in UI (tooltips/help):
+     - Active user (location): has a valid permission to any lock at this address AND either
+       (a) has an active RFID key (isActive = true and not expired), or
+       (b) has a successful access within the last 15 minutes.
+     - Inactive user: does not meet the above for this address.
+     - Active key: isActive = true AND (expiresAt is null OR expiresAt > now).
+     - Active lock: isActive flag; Online/Offline from isOnline heartbeat.
+   - Admin actions (contextual):
+     - On a User row: Assign/Reassign key; Grant/Revoke permission to one or more locks at this address
+     - On a Lock row: View/Manage permitted users; Grant/Revoke
+     - On a Key row: Assign to a user; Revoke
+   - Real-time: reflect key assignment/revocation/expiry and lock online/offline changes without manual refresh
+
+2) Backend: Query endpoints for location-scoped lists (can reuse and/or add aggregators)
+   Option A — Introduce dedicated endpoints (clear API UX):
+     - GET /api/location/:addressId/users
+       Query params: status=active|inactive (optional), page/limit
+       Returns users associated to this address via permissions, with computed status flags (activeAtLocation)
+     - GET /api/location/:addressId/locks
+       Query params: status=online|offline|active|inactive (multi), page/limit
+       Returns locks at this address with flags isActive, isOnline
+     - GET /api/location/:addressId/keys
+       Query params: status=active|inactive, page/limit
+       Returns keys for users associated with this address (via permissions), with active flag
+     - POST /api/location/:addressId/permissions (bulk)
+       Body: { userIds: string[], lockIds: string[], canAccess?: boolean, validFrom?: Date, validTo?: Date }
+     - POST /api/location/:addressId/keys/assign (bulk)
+       Body: { assignments: Array<{ cardId: string, userId: string, expiresAt?: Date, name?: string }> }
+
+   Option B — Reuse existing endpoints + small additions:
+     - Users: add a filter to users listing like hasPermissionAtAddressId=<addressId>
+     - Locks: already supports addressId; add multi-status filters if missing
+     - Keys: add userIds[] filter and addressId inference (keys whose user has permission to any lock at addressId)
+     - Keep existing POST /api/permission and RFID assign/revoke; add bulk variants for admin productivity
+
+   Notes:
+   - All endpoints must respect city scoping via getEffectiveCityId(req)
+   - Add DB indexes if needed (e.g., on UserPermission.lockId, Lock.addressId, RFIDKey.userId)
+
+3) UI/UX wiring
+   - Add a Location selector (or navigate from Dashboard link) to land on Location Details
+   - Implement table filters, chips/toggles for status (Active/Inactive, Online/Offline)
+   - Add modals for assign/revoke/grant/bulk actions with optimistic UI and toasts
+
+4) Real-time updates
+   - Continue using city rooms; emit lightweight events when permissions or key assignments change at an address
+   - Client listens and hot-updates the tables for the current addressId
+
+5) Acceptance criteria (done definition)
+   - For a given addressId:
+     - Admin can see three lists with counts:
+       * Users (Active/InActive) matching definitions above
+       * Locks (Online/Offline + Active/Inactive)
+       * Keys (Active/Inactive), including who holds each key
+     - From this page, Admin can connect users⇄locks (permissions) and users⇄keys (assign), including bulk operations
+     - Real-time changes (key revoke/assign/expire; lock online/offline; permission changes) update the lists without refresh
+     - All actions and resulting state transitions produce appropriate audit entries
+
+Risks & considerations
+- “Active user” definition can be ambiguous; we expose both signals (recent success vs active key+permission) to avoid confusion
+- Bulk operations should be rate-limited and audited; provide preview/confirmation
+- Performance: prefer server-side filtering/pagination; consider caching for dashboard big queries
+
+Suggested next steps
+- Backend: add the 3 location list endpoints (users, locks, keys) and simple bulk endpoints (permissions, key assign)
+- Frontend: implement Location Details page and wire actions; reuse existing components where possible
+- Tests: add integration tests for new endpoints; component tests for list filters and actions
+- Docs: update backend README with new endpoints; add a short guide in frontend README for the Location Details workflow

@@ -33,10 +33,10 @@ const Login: React.FC = () => {
     setError('')
 
     try {
-  const { data } = await api.post('/api/auth/login', formData)
-  localStorage.setItem('token', data.data.accessToken)
-  localStorage.setItem('cityId', formData.cityId)
-  await login(formData.username, formData.password, formData.cityId)
+      // Persist selected city for scoping
+      localStorage.setItem('cityId', formData.cityId)
+      // Delegate API call and token persistence to AuthContext
+      await login(formData.username, formData.password, formData.cityId)
     } catch (err: unknown) {
       const allowDemo = import.meta.env.VITE_ALLOW_DEMO_LOGIN === 'true'
       if (allowDemo && formData.username === 'admin' && formData.password === 'password123') {

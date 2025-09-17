@@ -360,6 +360,14 @@ export const validateAccessLogQuery = [
     .optional()
     .custom((v) => isId(v))
     .withMessage('Lock ID must be a valid ID'),
+  query('addressId')
+    .optional()
+    .custom((v) => isId(v))
+    .withMessage('Address ID must be a valid ID'),
+  query('cityId')
+    .optional()
+    .custom((v) => isId(v))
+    .withMessage('City ID must be a valid ID'),
   query('result')
     .optional()
     .isIn(Object.values(AccessResult))

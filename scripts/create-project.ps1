@@ -1,13 +1,14 @@
 param(
-  [Parameter(Mandatory=$true)][string]$Owner,
-  [Parameter(Mandatory=$true)][string]$Repo,
-  [Parameter(Mandatory=$true)][string]$ProjectName
+  [Parameter(Mandatory = $true)][string]$Owner,
+  [Parameter(Mandatory = $true)][string]$Repo,
+  [Parameter(Mandatory = $true)][string]$ProjectName
 )
 
 function Require-GHCLI {
   try {
     gh --version | Out-Null
-  } catch {
+  }
+  catch {
     Write-Error "GitHub CLI (gh) is not installed. Install from https://cli.github.com/ and run 'gh auth login'."
     exit 1
   }
@@ -64,43 +65,52 @@ When the key expiry job deactivates keys, emit WebSocket events to subscribed cl
 Acceptance:
 - [ ] Server broadcasts `key.expired` with keyId, userId, cityId, expiresAt
 - [ ] Client listens and updates dashboard KPIs in near real-time
-"@ },
+"@ 
+  },
   @{ Title = "Validate RFID assign/revoke requests"; Label = "enhancement"; Body = @"
 Add express-validator rules for `/api/rfid/assign` and `/api/rfid/revoke` and wire them in routes.
 Acceptance:
 - [ ] 400 on invalid `cardId`/`userId`/`expiresAt` or missing `id|cardId` on revoke
-"@ },
+"@ 
+  },
   @{ Title = "Dashboard per-location KPIs"; Label = "enhancement"; Body = @"
 Extend `/api/dashboard` to return per-location breakdowns and update UI to render cards per location.
 Acceptance:
 - [ ] API returns `locations: [{ id, name, activeUsers, onlineLocks, activeKeys }]`
-"@ },
+"@ 
+  },
   @{ Title = "Backend integration tests: city-aware auth + RFID"; Label = "test"; Body = @"
 Add tests for login with `cityId`, and `/api/rfid/assign` + `/api/rfid/revoke` happy and error paths.
 Acceptance:
 - [ ] Jest + Supertest covering success and validation failures
-"@ },
+"@ 
+  },
   @{ Title = "Add indexes on hot columns (userId, keyId, cityId)"; Label = "performance"; Body = @"
 Create migrations to add indexes on frequently filtered columns to speed up queries.
-"@ },
+"@ 
+  },
   @{ Title = "Cache dashboard KPIs"; Label = "performance"; Body = @"
 Add in-memory or Redis-based caching for dashboard summaries with short TTL.
-"@ },
+"@ 
+  },
   @{ Title = "Log storage strategy"; Label = "documentation"; Body = @"
 Document and plan log retention, partitions, or a separate analytics DB for long-term storage.
-"@ },
+"@ 
+  },
   @{ Title = "Optimize key expiry job for scale"; Label = "performance"; Body = @"
 Batch updates and use indexed queries to avoid scanning large tables; add metrics.
-"@ },
+"@ 
+  },
   @{ Title = "Future multi-region support"; Label = "design"; Body = @"
 Draft a plan for multi-city/multi-country toggles and data isolation.
-"@ }
+"@ 
+  }
 )
 
 $created = @()
 foreach ($it in $items) {
   Write-Host "Creating issue: $($it.Title)"
-  $issueJson = & gh issue create --repo $repoSlug --title $it.Title --body $it.Body --label $it.Label --json number,url,title 2>$null
+  $issueJson = & gh issue create --repo $repoSlug --title $it.Title --body $it.Body --label $it.Label --json number, url, title 2>$null
   if ($LASTEXITCODE -ne 0 -or -not $issueJson) {
     Write-Warning "Failed to create issue '$($it.Title)'. Skipping add to project."
     continue

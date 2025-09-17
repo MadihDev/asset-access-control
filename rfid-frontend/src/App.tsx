@@ -6,13 +6,21 @@ import Navigation from './components/Navigation'
 import UserManagement from './components/UserManagement'
 import AccessLogs from './components/AccessLogs'
 import AuditLogs from './components/AuditLogs'
+import Locks from './components/Locks'
 import Settings from './components/Settings'
+import LocationDetails from './pages/LocationDetails'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { ROLES } from './utils/rbac'
+import { useWebSocket } from './hooks/useWebSocket'
+import { useCity } from './contexts/CityContext'
 
 function App() {
   const { user, loading } = useAuth()
+  const { selectedCityId } = useCity()
+  // Establish WS connection after login; token is stored in localStorage
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  useWebSocket(!!user && !!token, token, selectedCityId)
 
   useEffect(() => {
     // no-op here; AuthProvider handles initial load
@@ -55,6 +63,22 @@ function App() {
               element={
                 <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
                   <AccessLogs user={user} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/locks"
+              element={
+                <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
+                  <Locks user={user} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/location/:addressId"
+              element={
+                <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
+                  <LocationDetails />
                 </ProtectedRoute>
               }
             />

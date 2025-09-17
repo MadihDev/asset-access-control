@@ -157,6 +157,7 @@ export interface AccessLog {
   rfidKeyId?: string
   lock: Lock
   lockId: string
+  cityId?: string
 }
 
 export enum AccessType {
@@ -250,10 +251,12 @@ export interface PaginationQuery {
 export interface AccessLogQuery extends PaginationQuery {
   userId?: string
   lockId?: string
+  addressId?: string
   result?: AccessResult
   accessType?: AccessType
   startDate?: string
   endDate?: string
+  cityId?: string
 }
 
 export interface AuditLogQuery extends PaginationQuery {
@@ -268,6 +271,7 @@ export interface UserQuery extends PaginationQuery {
   role?: UserRole
   isActive?: boolean
   search?: string
+  cityId?: string
 }
 
 export interface LockQuery extends PaginationQuery {
@@ -316,6 +320,8 @@ export interface JWTPayload {
   userId: string
   email: string
   role: UserRole
+  // For refresh tokens we include a unique token id (jti)
+  jti?: string
   iat?: number
   exp?: number
 }

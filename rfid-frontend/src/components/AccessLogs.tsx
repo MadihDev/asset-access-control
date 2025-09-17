@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useToast } from '../hooks/useToast'
 import { useQuery } from '@tanstack/react-query'
 import api from '../services/api'
 import { FilterBar } from './ui/FilterBar'
 import { Table, Thead, Tbody, Tr, Th as TTh, Td } from './ui/DataTable'
 import { Pagination } from './ui/Pagination'
+import { useCity } from '../contexts/CityContext'
 
 interface User {
   id: string
@@ -67,6 +69,7 @@ const accessTypes = ['RFID_CARD', 'MANUAL', 'EMERGENCY', 'MAINTENANCE']
 
 function AccessLogs({ user }: AccessLogsProps) {
   const { error: toastError } = useToast()
+  const { selectedCityId } = useCity()
   // Filters and table state
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
@@ -74,6 +77,7 @@ function AccessLogs({ user }: AccessLogsProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [userId, setUserId] = useState('')
   const [lockId, setLockId] = useState('')
+  const [addressId, setAddressId] = useState('')
   const [result, setResult] = useState('')
   const [accessType, setAccessType] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -89,12 +93,31 @@ function AccessLogs({ user }: AccessLogsProps) {
     }
     if (userId) p.userId = userId
     if (lockId) p.lockId = lockId
+    if (addressId) p.addressId = addressId
     if (result) p.result = result
     if (accessType) p.accessType = accessType
     if (startDate) p.startDate = startDate
     if (endDate) p.endDate = endDate
+    if (selectedCityId) p.cityId = selectedCityId
     return p
-  }, [page, limit, sortBy, sortOrder, userId, lockId, result, accessType, startDate, endDate])
+  }, [page, limit, sortBy, sortOrder, userId, lockId, addressId, result, accessType, startDate, endDate, selectedCityId])
+
+  // When switching cities, reset to the first page to avoid empty results
+  useEffect(() => {
+    setPage(1)
+  }, [selectedCityId])
+
+  // Prefill addressId from URL if present
+  const location = useLocation()
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const addr = params.get('addressId')
+    if (addr) {
+      setAddressId(addr)
+      setPage(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery<AccessLogsResponse, unknown>({
     queryKey: ['access-logs', params],
@@ -162,7 +185,7 @@ function AccessLogs({ user }: AccessLogsProps) {
       <div className="bg-white rounded-lg shadow-md p-6">
         <FilterBar
           onSubmit={onSubmitFilters}
-          onReset={() => { setUserId(''); setLockId(''); setResult(''); setAccessType(''); setStartDate(''); setEndDate(''); setPage(1) }}
+          onReset={() => { setUserId(''); setLockId(''); setAddressId(''); setResult(''); setAccessType(''); setStartDate(''); setEndDate(''); setPage(1) }}
           isRefreshing={isFetching}
           right={(
             <div className="flex items-center gap-2">
@@ -183,6 +206,10 @@ function AccessLogs({ user }: AccessLogsProps) {
           <div>
             <label className="block text-sm font-medium text-gray-700">Lock ID</label>
             <input value={lockId} onChange={e => setLockId(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="optional" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Address ID</label>
+            <input value={addressId} onChange={e => setAddressId(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="optional" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Result</label>

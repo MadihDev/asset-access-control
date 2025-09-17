@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { AuditAction } from '../types'
+import { getEffectiveCityId } from '../lib/scope'
 
 class AuditController {
   async list(req: Request, res: Response) {
@@ -19,6 +20,11 @@ class AuditController {
         where.timestamp = {}
         if (startDate) where.timestamp.gte = new Date(String(startDate))
         if (endDate) where.timestamp.lte = new Date(String(endDate))
+      }
+      const effectiveCityId = getEffectiveCityId(req)
+      if (effectiveCityId) {
+        // Scope audits by related user city when available
+        where.user = { cityId: effectiveCityId }
       }
 
       const [items, total] = await Promise.all([
