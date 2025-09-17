@@ -1,0 +1,93 @@
+Comparison Summary (Architecture & Checklist vs Implementation)
+
+Legend: ✅ Implemented | ⚠️ Partially done | ❌ Missing
+
+FRONTEND (rfid-frontend)
+
+- Framework & tooling (Vite + TS + Tailwind v4): ✅
+- Global layout (sidebar/header/footer as per architecture): ⚠️ (Navigation present; no full layout/sidebars)
+- Auth UI (Login with City, Protected routes): ✅
+- Tenant login (Project + City): ❌ (City-only; tenant design in ARCHITECTURE.md not yet implemented)
+- Auth state (AuthContext, tokens, profile load): ✅
+- City/Tenant context: ⚠️ (CityContext implemented; TenantContext not yet)
+- Dashboard (location KPIs, sorting, links): ✅
+- Real-time updates via WebSocket (KPI refresh, key events): ✅
+- Users (list/search/sort/paginate, CSV export): ✅
+- Users (create/edit/delete, role-gated): ✅
+- Permissions UI (grant/revoke): ✅
+- RFID keys UI (list/add/toggle active): ✅
+- Access Logs page (filters, export): ✅
+- Audit Logs page (filters): ✅
+- Location Details page (/locations/:addressId): ⚠️ (Exists as /location/:addressId; UI wired for bulk ops; route naming deviation and not in Navigation)
+- Post-login redirect to assigned location(s): ❌
+- Tests (components/hooks/e2e): ⚠️ (Vitest configured; few tests present)
+- System health panel & charts: ❌
+
+BACKEND (Express + Prisma)
+
+- Project scaffolding & config: ✅
+- Prisma schema & PostgreSQL connectivity: ✅
+- Seed script with demo data: ✅
+- Auth (login, JWT, refresh, change/reset password): ✅
+- Auth middleware & RBAC (authenticateToken, requireAdmin/Manager): ✅
+- Users API (list, get, create, update, delete, stats, export): ✅
+- Locks API (list, get, ping, update, active/online flags): ✅
+- Access endpoint for devices (POST /api/lock/access-attempt): ✅
+- Access Logs API + CSV export + stats: ✅
+- Dashboard API (overview + per-location): ✅
+- Permissions API (list/assign/update/revoke): ✅
+- RFID API (list/create/update/assign/revoke): ✅
+- Location endpoints (users/locks/keys + bulk ops): ✅
+- Audit logs & API: ✅
+- Rate limiting (apiLimiter, authLimiter, bulkLimiter): ✅
+- Error handling middleware: ✅
+- City directory (`GET /api/city`): ✅
+- WebSockets (server init, city-scoped events): ✅
+- Background jobs (key expiry, refresh cleanup): ✅
+- Notification service (email/SMS/Twilio): ❌ (deps present but not wired)
+- Tenant model (Project + City in DB and APIs): ❌ (ARCHITECTURE.md describes; code is city-only)
+- Caching for dashboard: ❌
+- RBAC hardening everywhere: ⚠️ (core routes protected; verify all new/bulk routes validations)
+
+DEVIATIONS & NOTES
+
+- Route naming: Frontend uses /location/:addressId while docs mention /locations/:addressId. Functionally OK, but document or align.
+- Tenant migration: Architecture and Checklist propose Project+City; current implementation is City-only with CityContext. Migration plan is documented but not executed.
+- Notification service: Twilio dependency is present but not connected; architecture mentions email/SMS/PUSH options.
+- Health/analytics dashboards and charts are not implemented on the frontend; backend has sufficient data endpoints.
+- Testing: Backend has substantial Jest tests; frontend tests are minimal.
+
+MATRIX AGAINST PROJECT_CHECKLIST.md
+
+Backend (API)
+- Auth, RBAC, Users, Access Logs, Dashboard, Audit, City directory: ✅
+- Location Overview endpoints and bulk ops: ✅
+- Key auto-expiry + WS notifications: ✅
+- Rate limiting: ✅
+- Notification service: ❌
+- RBAC hardening and input validation coverage: ⚠️ (most done; confirm new bulk validators are complete)
+
+Frontend
+- Vite+TS+Tailwind scaffolding: ✅
+- Env config and Axios client with tokens: ✅
+- AuthContext and Protected routes: ✅
+- Dashboard KPIs, sorting, links: ✅
+- Users management UI with CSV export: ✅
+- Access Logs with export: ✅
+- Permissions and RFID management UIs: ✅
+- Real-time KPI updates via WS: ✅
+- Location Details page (Location Overview & Admin Connect): ⚠️ (exists, route naming and Nav linkage pending)
+- Post-login redirect to assigned locations: ❌
+- Tests for new Location Details and broader components: ❌/⚠️
+
+MATRIX AGAINST ARCHITECTURE.md (Selected items)
+- Websockets: ✅ (initWebSocket, client hook, city-scoped)
+- Background jobs: ✅ (key expiry, refresh cleanup)
+- Data model: ✅ for city-based; ❌ for tenant model (Project/ProjectCity)
+- APIs: ✅ core endpoints; ❌ project endpoints (GET /api/project)
+- Frontend structure: ⚠️ simplified vs proposed (no full layout system)
+- Real-time location page behaviors: ⚠️ partially wired, events handled globally, not address-specific listeners
+
+Summary
+- The system is largely implemented for city-scoped multi-city operation with real-time updates and robust CRUD and logging.
+- The biggest gap versus the architecture is the tenant migration (Project + City) and some frontend UX polish (Location Details linking, post-login redirect, health/charts, tests).

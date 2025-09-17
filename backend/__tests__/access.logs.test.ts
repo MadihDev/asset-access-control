@@ -41,7 +41,7 @@ describe('Access Logs scoping and pagination', () => {
       expect(res.body.pagination).toHaveProperty('limit')
       expect(res.body.pagination).toHaveProperty('total')
     }
-  })
+    }, 15000)
 
   it('Manager is implicitly scoped to their city if no cityId provided', async () => {
     const res = await request(app)

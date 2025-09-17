@@ -56,13 +56,23 @@ Location Overview & Admin Connect (auth required)
 - `GET /location/:addressId/locks` – list locks at an address; filters: `status=active|inactive|online|offline`, `page`, `limit`
 - `GET /location/:addressId/keys` – list keys for users with access at an address; filters: `status=active|expired`, `page`, `limit`
 - `POST /location/:addressId/permissions` – Manager+ only; bulk grant/revoke permissions. Body: `{ grants: [{ userId, lockId, validFrom?, validTo? }], revokes: [{ userId, lockId }] }`
-	- Limits: `MAX_LOCATION_BULK_ITEMS` (default 500). Returns 413 if exceeded.
-	- Validation: date order, required fields, address scoping and city scoping enforced.
+  - Limits: `MAX_LOCATION_BULK_ITEMS` (default 500). Returns 413 if exceeded.
+  - Validation: date order, required fields, address scoping and city scoping enforced.
 - `POST /location/:addressId/keys/assign` – Manager+ only; bulk create/update/reassign keys. Body: `{ items: [{ cardId, userId, name?, expiresAt?, isActive? }] }`
-	- Limits: `MAX_LOCATION_BULK_ITEMS` (default 500). Returns 413 if exceeded.
-	- Validation: required fields, valid dates, city scoping enforced.
+  - Limits: `MAX_LOCATION_BULK_ITEMS` (default 500). Returns 413 if exceeded.
+  - Validation: required fields, valid dates, city scoping enforced.
 
 Realtime events
 
 - On successful bulk permissions: event `location:permissions:changed` is emitted to room `city:<cityId>` with payload `{ addressId, counts: { granted, updated, revoked }, ts }`.
 - On successful bulk key assignment: event `location:keys:changed` is emitted to room `city:<cityId>` with payload `{ addressId, counts: { created, reassigned, updated }, ts }`.
+
+Simulation (dev/test only)
+
+- Toggle: set `ENABLE_SIM_ROUTES=true` in backend `.env` to expose `/api/sim/*` (admin only)
+- `POST /sim/access` – simulate an access attempt
+  - body: `{ lockId, userId?, rfidKeyId?, result, accessType?, timestamp? }`
+  - emits `access:attempt` to `city:<cityId>`
+- `POST /sim/lock-status` – mark a lock online/offline
+  - body: `{ lockId, isOnline }`
+  - emits `lock:status` to `city:<cityId>`

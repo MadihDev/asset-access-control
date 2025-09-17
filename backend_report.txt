@@ -1,0 +1,63 @@
+Backend Report
+
+1) Tech stack & dependencies
+- Runtime: Node.js + TypeScript
+- Framework: Express 4
+- ORM: Prisma 5 with PostgreSQL 17
+- Auth: jsonwebtoken, bcryptjs; refresh tokens persisted in DB
+- Input validation: express-validator and Joi
+- Security: helmet, cors, express-rate-limit, morgan (logging), winston logger
+- File handling: multer (present, not heavily used yet)
+- Realtime: socket.io (server) with WebSocket integration
+- Background jobs: keyExpiry.job (auto-deactivate expired keys), refreshCleanup.job (cleanup revoked/expired refresh tokens)
+- CSV: csv-writer and csv-parser for import/export
+- Testing: Jest + Supertest; tests present for auth, health, users, locks, locations, permissions, RFID, refresh tokens
+
+2) Implemented features
+- Auth
+  - POST /api/auth/login (validateLogin), JWT issuance, refresh token rotation (POST /api/auth/refresh-token), change-password, reset-password (validation in middleware)
+  - GET /api/auth/profile returns authenticated user
+  - Role middleware: authenticateToken, requireAdmin, requireManagerOrAbove
+- Users API
+  - GET /api/user with pagination, sorting; CSV export endpoint /api/user/export
+  - CRUD: POST /api/user, GET /api/user/:id, PUT /api/user/:id, DELETE /api/user/:id
+  - GET /api/user/:id/stats
+- Locks & Access
+  - Public POST /api/lock/access-attempt to log and evaluate access attempts (RFID device endpoint)
+  - GET /api/lock/access-logs with filters (user, lock, addressId, result, accessType, date range); CSV export; access statistics endpoint
+  - GET /api/lock (list), GET /api/lock/:id, POST /api/lock/:id/ping (mark online), PUT /api/lock/:id (toggle active/update)
+- Permissions
+  - /api/permission: list by userId/lockId; POST assign; PUT update; DELETE revoke
+- RFID Keys
+  - /api/rfid: list (Manager+), POST create (Admin), PUT update, POST /assign, POST /revoke
+  - Auto-expiry enforcement via background job; emits WebSocket events (key.assigned/revoked/expired)
+- Dashboard
+  - GET /api/dashboard (overview KPIs, recent access logs, per-location metrics)
+- Audit Logs
+  - /api/audit: list with filters/pagination; audit entries for login, permission changes, key issue/revoke/expire
+- City Directory
+  - GET /api/city returns active NL cities
+- Location Overview & Bulk Operations
+  - /api/location/:addressId/users | /locks | /keys
+  - Bulk endpoints: POST /api/location/:addressId/permissions and POST /api/location/:addressId/keys/assign with rate limiting
+- WebSocket
+  - Server initialization in src/index.ts via initWebSocket(server)
+  - Events: kpi:update, access.created, key.assigned/revoked/expired; city-scoped subscriptions
+- Error handling & rate limiting
+  - Global error handler; apiLimiter and authLimiter; bulkLimiter for heavy routes
+
+3) Missing features / gaps
+- Tenant model (Project + City) not yet implemented in schema or APIs; current scoping relies on cityId only
+- Notification service stubs (email/SMS/Twilio) present as dependency but not wired to events/endpoints
+- Some checklist items mark RBAC hardening and validation coverage as partial; ensure all new/bulk endpoints have validators
+- Health/metrics endpoints beyond /api/health and dashboard are minimal
+- Caching layer (Redis) for dashboard not implemented
+
+4) Risks / technical debt
+- City-only scoping may cause future data migration complexity; docs propose adding Project and ProjectCity
+- Public /api/lock/access-attempt endpoint must validate payloads strictly (validateAccessAttempt present) and protect device secrets; consider HMAC or device token auth
+- WebSocket auth and scoping must ensure tenants cant subscribe to other city rooms; verify token checks in initWebSocket
+- CSV endpoints should stream for large datasets and enforce strict RBAC; currently Manager+ allowed
+- Background jobs: ensure they are idempotent and efficient (proper indexes exist: rfid_keys(isActive, expiresAt), user_permissions, locks)
+- Rate limiting: fine-tune limits for auth, bulk operations to prevent abuse
+- Test coverage for new location endpoints and refresh token rotation should remain high; keep integration tests in sync with schema changes

@@ -352,31 +352,32 @@ rfid-frontend/
 
 ---
 
-## Feature Design Addendum (City-aware Login, Dashboard, Keys, Roles)
+## Feature Design Addendum (Tenant Model: Project + City, Dashboard, Keys, Roles)
 
 This section captures the newly introduced functional requirements and how they map to the data model, APIs, and runtime behavior.
 
-### 1) City-aware Login and Post-login Navigation
+### 1) Tenant Login (Project + City) and Post-login Navigation
 
-- Login Inputs: City, Username, Password
+- Login Inputs: Project, City, Username, Password
 - Validation rules:
-  - `cityId` must reference an active City
-  - `username/password` checked for a user belonging to the selected `cityId`
+  - `project` must reference an active Project; `city` must be active and linked via `ProjectCity` to the selected project
+  - `username/password` checked for a user belonging to the resolved `projectCityId`
   - User must be active (`isActive = true`)
 - API Contract:
-  - `POST /api/auth/login` body: `{ username: string, password: string, cityId: string }`
-  - Success: `{ user, accessToken, refreshToken, expiresIn }`
-  - On success, the client stores `accessToken` and loads profile/permissions
-- City Directory:
-  - `GET /api/city` → returns active cities for the login dropdown
-  - Current deployment constraint: Only Netherlands cities are returned (country = "Netherlands")
+  - `POST /api/auth/login` body: `{ username: string, password: string, project: string, city: string }`
+  - Success: `{ user, project, city, projectCityId, accessToken, refreshToken, expiresIn }`
+  - On success, the client stores `accessToken` along with tenant scope and loads profile/permissions
+- Project/City Directory (optional UX improvements):
+  - `GET /api/project` → returns active projects
+  - `GET /api/city?project=PerfectIT` → returns cities linked to that project
 - Redirect after login:
-  - Client redirects the user to their assigned location(s) within the selected city (e.g., dashboard path filtered by `cityId` and user’s assignments).
+  - Client redirects the user to pages scoped to the tenant (e.g., dashboard path filtered by `projectCityId` and user’s assignments).
 
 Data model notes:
 
-- `User.cityId` (nullable) relates users to the City they belong to
-- `City` → `Address` → `Lock` hierarchy already exists; this flow leverages it
+- Add `Project` and `ProjectCity` tables; `unique(Project.slug)` and `unique(ProjectCity.projectId, ProjectCity.cityId)`
+- Add `projectCityId` foreign key to `User`, `UserPermission`, `Lock`, `AccessLog` (and `Address` if desired for strictness)
+- During migration, support both `cityId` and `projectCityId`; prefer `projectCityId` when available
 
 ### 2) Dashboard by Location with Real-time Metrics
 
@@ -390,8 +391,8 @@ Once authenticated, the dashboard shows the user’s location(s) for their city,
   - `AccessLog` stream and lock health updates (future WebSocket)
   - `RFIDKey` validity window (see section 3)
 - Suggested API/flow:
-  - `GET /api/dashboard?cityId=...` returns summary with lists and counts filtered by city (and narrowed by user role/assignments)
-  - Real-time: WebSocket channel broadcasting lock online/offline events, key assignment/revocation, and access attempts to subscribed clients (scoped by city or permission)
+  - `GET /api/dashboard?projectCityId=...` returns summary with lists and counts filtered by tenant (and narrowed by user role/assignments)
+  - Real-time: WebSocket channel broadcasting lock online/offline events, key assignment/revocation, and access attempts to subscribed clients (scoped by tenant room or permission)
 
 ### 3) Key & Lock Management
 
@@ -408,9 +409,9 @@ Once authenticated, the dashboard shows the user’s location(s) for their city,
   - Revoke Key: set `isActive = false` (and optionally clear associations)
   - Reassign Key: update `userId` and reset `issuedAt`/`expiresAt`
 - Suggested APIs (existing endpoints can be extended):
-  - `POST /api/rfid/assign` → assign key to user with optional `expiresAt` (default now + 6h)
-  - `POST /api/rfid/revoke` → revoke key immediately
-  - `GET /api/lock/...` and `GET /api/permission/...` already provide access-related lists
+  - `POST /api/rfid/assign` → assign key to user with optional `expiresAt` (default now + 6h); require or infer tenant via `projectCityId`
+  - `POST /api/rfid/revoke` → revoke key immediately; scoped by tenant
+  - `GET /api/lock?...projectCityId=...` and `GET /api/permission?...projectCityId=...` for tenant filtering
 
 ### 4) System Roles & Access Scope
 
@@ -419,28 +420,30 @@ Once authenticated, the dashboard shows the user’s location(s) for their city,
   - Supervisor/Admin: can monitor all users, locks, and keys by city and by location
 - Enforcement:
   - Role checks are applied in middleware (e.g., `requireManagerOrAbove`, `requireAdmin`)
-  - City scope: filter queries by `cityId` derived from user context or request
-  - UI honors scope by showing only allowed locations/locks and management actions
+  - Tenant scope: filter queries by `projectCityId` (preferred) derived from JWT or request; fallback to `cityId` during migration
+  - UI honors scope by showing only allowed locations/locks and management actions within the tenant
 
 ### Contracts, Edge Cases, and Success Criteria
 
 Contracts:
 
-- Login request: `{ username, password, cityId }` → 200 OK with tokens and user profile; 401 for invalid creds/city
-- City list: `GET /api/city` → `{ success, data: City[] }`
-- Dashboard request: accepts `cityId` and returns filtered stats and lists
+- Login request: `{ username, password, project, city }` → 200 OK with tokens and user profile + tenant; 401 for invalid creds/tenant
+- Project list: `GET /api/project` → `{ success, data: Project[] }`
+- City list (by project): `GET /api/city?project=...` → `{ success, data: City[] }`
+- Dashboard request: accepts `projectCityId` and returns filtered stats and lists
 
 Edge cases:
 
-- City is inactive → block login
-- User not assigned to the given city → invalid credentials
+- Project or City inactive → block login
+- City not linked to Project (no `ProjectCity` row) → invalid tenant
+- User not assigned to the given tenant → invalid credentials
 - Key expired mid-session → subsequent access attempts denied; UI updates via WebSocket
 - Lock offline → access attempts may return device error; dashboard reflects status
 
 Success criteria:
 
-- User can log in only when selecting their correct city and valid credentials
-- Post-login, user sees only their city’s assigned location(s)
+- User can log in only when selecting their correct project + city and valid credentials
+- Post-login, user sees only their tenant’s assigned location(s)
 - Dashboard reflects “Active Users/Locks/Keys” with near real-time updates
 - Admin can revoke/reassign keys; revoked/expired keys are enforced immediately
 
@@ -519,10 +522,10 @@ What needs to be updated (to deliver the feature end-to-end)
    - Keys: add `userIds[]` filter and `addressId` inference (keys whose owner has permission to any lock at `addressId`).
    - Keep existing POSTs for permissions and RFID assign/revoke; add bulk variants.
 
-   Notes:
+Notes:
 
-   - All endpoints must continue to respect city scoping via `getEffectiveCityId(req)`.
-   - Add DB indexes as needed (e.g., `UserPermission.lockId`, `Lock.addressId`, `RFIDKey.userId`).
+- All endpoints must continue to respect tenant scoping via `getEffectiveScope(req)` → `{ projectId, cityId, projectCityId }`. Prefer filtering by `projectCityId`.
+- Add DB indexes as needed (e.g., `UserPermission.lockId`, `Lock.addressId`, `RFIDKey.userId`) and ensure these compound with `projectCityId` where beneficial.
 
 3. UI/UX wiring
 
@@ -552,7 +555,192 @@ Risks & considerations
 
 Suggested next steps
 
-- Backend: implement the three location list endpoints (or extend existing ones) and simple bulk endpoints for permissions and key assignment.
-- Frontend: build the Location Details page and wire actions; reuse existing table, filters, and modal components.
-- Tests: add integration tests for new endpoints; component tests for list filters and actions.
-- Docs: update backend README with new endpoints; add a short guide in frontend README for the Location Details workflow.
+- Backend: implement tenant-aware list endpoints (or extend existing ones) and bulk endpoints; ensure all queries include `projectCityId` filters.
+- Frontend: feature-flag the new login (Project + City); create `TenantContext` (replacing `CityContext`), propagate to Users/Locks/Permissions/Dashboard, and update API calls to include tenant.
+- Tests: add integration tests for tenant isolation (same usernames across tenants), dashboard scoping by tenant, and auth flow with `{ project, city }`.
+- Docs: update README and API docs; link to `LOGIN_PROJECT_CITY_MIGRATION.txt` and `PROJECT_CHECKLIST.md`.
+
+---
+
+## Tenant Model Deep Dive (New)
+
+This section consolidates design details for the Project + City tenant model.
+
+### Database schema
+
+- `Project(id, name, slug, isActive, createdAt, updatedAt)`
+- `ProjectCity(id, projectId, cityId, isActive, createdAt, updatedAt)`, unique(projectId, cityId)
+- Add `projectCityId` to: `User`, `UserPermission`, `Lock`, `AccessLog` (and `Address` if required)
+- Indexing:
+  - unique(Project.slug)
+  - indexes on `projectCityId` for all scoped tables
+  - compound indexes where queries filter by both `projectCityId` and another foreign key (e.g., `(projectCityId, addressId)` on `Lock`)
+
+### Auth flow and scoping
+
+1. Client submits `{ username, password, project, city }`.
+2. API resolves tenant → `projectCityId` via `Project.slug|name` and `City.name` with `ProjectCity` join.
+3. Lookup user by `(username, projectCityId)`; verify password and `isActive`.
+4. Issue JWT with claims `{ sub, role, projectId, cityId, projectCityId }`.
+5. Middleware extracts scope via `getEffectiveScope(req)` and applies `projectCityId` to queries.
+6. Socket.io joins `tenant:<projectCityId>` room for events; server emits to this room for tenant events.
+
+### Frontend state
+
+- Introduce `TenantContext` storing `{ project, city, projectCityId }` along with tokens.
+- The login page captures Project (input or autocomplete) + City (select filtered by project).
+- All pages and services append tenant scope to API calls.
+
+### Migration strategy
+
+- Dual-mode: accept `{ cityId }` logins during migration, prefer `{ project, city }`.
+- Backfill: create a default `Project` for existing data; map each `cityId` to a `ProjectCity`; update scoped tables with `projectCityId`.
+- Feature flag: `VITE_TENANT_MODE=project_city`; roll out backend first, then frontend under flag; migrate data; switch flag on fully.
+
+### Security and auditing
+
+- Tenant claims in JWT; verify on each request.
+- Audit logs include `projectCityId` for changes (key assign/revoke, permission changes, user updates).
+- Prevent cross-tenant leakage in endpoints and WebSocket events.
+
+---
+
+## SMS-based Two-Factor Authentication (2FA) — Design
+
+Goal: Strengthen login by adding a one-time SMS code after password verification. This introduces a step-up authentication flow with minimal impact on existing APIs and UI while keeping testability and ops in mind.
+
+### User flows
+
+1. Password step → 2FA challenge
+
+- Client posts login as usual (currently `{ username, password, cityId }` or `{ username, password, project, city }` when tenant mode is enabled).
+- If the user has 2FA enabled (or the system enforces it globally), the server returns `202 Accepted` with `{ challengeId, method: "sms", maskedPhone, expiresIn }` and DOES NOT issue access/refresh tokens yet.
+- Server sends a 6-digit numeric code via SMS to the user’s verified phone number.
+
+2. Submit code → tokens
+
+- Client posts `{ challengeId, code }` to verify endpoint within `expiresIn`.
+- On success, server returns the normal login payload: `{ user, tenant, accessToken, refreshToken, expiresIn }`.
+- On failure, return `400/401` with remaining attempts; lockout after N failed attempts or after expiry.
+
+3. Recovery and fallback
+
+- If SMS is delayed, client can call `resend` endpoint (rate-limited) to re-send the code and extend expiry minimally.
+- If user has no phone bound, either block login with a clear error or fall back to password-only when feature flag is off.
+
+### API surface
+
+- `POST /api/auth/login` (unchanged request body)
+
+  - Responses:
+    - 200 OK → password-only success (when 2FA disabled) with tokens.
+    - 202 Accepted → 2FA required: `{ challengeId, method: "sms", maskedPhone, expiresIn }`.
+    - 401/400 → invalid credentials or invalid tenant.
+
+- `POST /api/auth/2fa/verify`
+
+  - Body: `{ challengeId: string, code: string }`
+  - Success 200: tokens payload `{ user, tenant, accessToken, refreshToken, expiresIn }`.
+  - Errors: `400` invalid/expired, `429` rate limited, `423` locked.
+
+- `POST /api/auth/2fa/resend`
+  - Body: `{ challengeId: string }`
+  - Success 204 (no body).
+  - Errors: `404` no challenge, `429` too many requests.
+
+### Data model additions (Prisma)
+
+- Extend `User`:
+
+  - `phone: string | null` (E.164 format, verified)
+  - `twoFactorEnabled: boolean` (default `false`)
+  - `twoFactorVerifiedAt: DateTime | null` (optional record of phone verification)
+
+- New table `TwoFactorChallenge` (ephemeral):
+  - `id: string` (uuid)
+  - `userId: string` (FK)
+  - `codeHash: string` (bcrypt hash of 6-digit code)
+  - `expiresAt: DateTime`
+  - `attempts: Int` (default 0)
+  - `maxAttempts: Int` (default 5, configurable)
+  - `method: "sms" | "totp"` (future-proof)
+  - `createdAt/updatedAt`
+  - Indexes: `idx_twofactor_user_expires (userId, expiresAt)`
+
+Note: If avoiding a new table, you can store challenges in Redis with TTL; keep the Prisma model for auditability optional.
+
+### Backend logic changes
+
+- Login controller:
+
+  - After verifying password and tenant scope, check 2FA policy and user flags.
+  - If 2FA required → create challenge: generate 6-digit code, store `codeHash`, set `expiresAt = now + 5m`, send SMS, return 202 with challenge info.
+  - If not required → return tokens as today.
+
+- Verify endpoint:
+
+  - Lookup challenge by id; ensure not expired or locked; compare bcrypt(code) to `codeHash`.
+  - On success → issue tokens and delete challenge.
+  - On failure → increment attempts; if attempts >= max, lock and return `423`.
+
+- Resend endpoint:
+  - Rate-limit per challenge and per phone; generate a new code (or reuse by policy), update `expiresAt`, send SMS again.
+
+### SMS provider integration
+
+- Integrate Twilio (already in dependencies) or any SMS provider behind an abstraction `SmsProvider`.
+- Implement `sendSms(to: string, message: string): Promise<void>` with provider-specific code gated by env flags.
+- Build a `NotificationService` that can send login codes and mask phone numbers for UI.
+
+### Configuration & env vars
+
+- `TWOFA_ENABLED=true|false`
+- `TWOFA_METHODS=sms` (future: `sms,totp`)
+- `TWOFA_CODE_TTL_SEC=300` (default 300s)
+- `TWOFA_MAX_ATTEMPTS=5`
+- `TWOFA_RESEND_COOLDOWN_SEC=30`
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` (or `TWILIO_FROM_NUMBER`)
+
+### Security considerations
+
+- Code hashing: never store raw codes; hash with bcrypt; compare in constant time.
+- Brute-force protection: attempts cap, cooldowns, IP/device fingerprints if desired, and `429` on abuse.
+- PII minimization: store phone in E.164 and mask in responses (`+31******789`).
+- Audit: log challenge created, verified, failed, locked with userId and tenant scope.
+- Replay prevention: single-use challenge; delete on verify; expire on timeout.
+- Time skew: TTL should be server-enforced; client timer is advisory only.
+- Multi-session: invalidate prior challenges on new login start.
+
+### Frontend changes
+
+- Login page becomes two-step when 2FA is required:
+  - Step 1: Username/Password (+ Project/City in tenant mode)
+  - If 202 Accepted: render code entry with masked phone and countdown; disable submit until input is 6 digits.
+  - Button to Resend (disabled until cooldown ends); show remaining attempts and expiry.
+  - On verification success: proceed as normal (store tokens and tenant, redirect).
+
+### Edge cases
+
+- No phone on account but 2FA required → return 409 Conflict with message to contact admin.
+- SMS delivery delays → allow 1-2 resends; show UX hints to wait up to 30s.
+- Phone change flow (later): add verification before enabling 2FA.
+
+### Acceptance criteria
+
+- When `TWOFA_ENABLED=true`, successful login requires a valid SMS code for users with `twoFactorEnabled=true` (or globally enforced).
+- API returns 202 with challenge details; verify returns tokens; incorrect/expired codes are rejected; lockout after max attempts.
+- Events are audited; rate limits prevent abuse; no raw codes are persisted.
+
+---
+
+## Implementation Alignment (from latest comparison)
+
+This section notes current deviations and immediate decisions to keep architecture and implementation in sync.
+
+- Tenant Model (Project + City): Planned in this doc; implementation is city-only today. Migration plan remains as documented (dual-mode, feature flag, backfill). Action: proceed with backend dual-mode first, then frontend `TenantContext`.
+- Notification Service (Twilio): Dependencies present but not wired. Action: introduce `NotificationService` with `SmsProvider` adapter and env-based enablement; use for SMS 2FA and future alerts.
+- Route naming: Frontend uses `/location/:addressId` while docs use `/locations/:addressId`. Action: accept current route and document it; optionally alias `/locations/:addressId` to avoid breaking links.
+- Post-login redirect: Missing. Action: add redirect to user-assigned location(s) or dashboard with tenant filters.
+- Frontend layout: Global layout (sidebar/header/footer) is simplified. Action: keep simplified layout for now; revisit after tenant migration.
+- Caching: No dashboard caching in place. Action: optional Redis cache layer for heavy dashboard endpoints.
+- Testing: Backend tests strong; frontend tests minimal. Action: add tests for Location Details, post-login redirect, and 2FA flows.

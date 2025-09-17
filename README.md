@@ -87,7 +87,7 @@ backend/          # Express API (TypeScript + Prisma)
 rfid-frontend/    # Vite + React + Tailwind v4 app
 ```
 
-See `ARCHITECTURE.md` for a deeper architecture and runtime view, `docs/WORKFLOWS_AND_STATUS.md` for current app workflows and status, and `docs/bulk-actions.md` for the Bulk Actions guide.
+See `ARCHITECTURE.md` for a deeper architecture and runtime view, `docs/WORKFLOWS_AND_STATUS.md` for current app workflows and status, and `docs/bulk-actions.md` for the Bulk Actions guide. For a step-by-step setup and usage guide, see `docs/PRESENTATION_GUIDE.md`.
 
 ## Run Locally (Windows PowerShell)
 

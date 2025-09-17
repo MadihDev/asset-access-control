@@ -52,6 +52,17 @@ export const CityProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [])
 
+  // If the stored cityId no longer exists (e.g., after reseeding), clear it
+  // Placed after setSelectedCityId definition to avoid TDZ reference errors
+  useEffect(() => {
+    if (!loading && selectedCityId) {
+      const exists = cities.some((c) => c.id === selectedCityId)
+      if (!exists) {
+        setSelectedCityId(null)
+      }
+    }
+  }, [loading, cities, selectedCityId, setSelectedCityId])
+
   const value = useMemo<CityContextValue>(() => ({ cities, loading, selectedCityId, setSelectedCityId, refresh }), [cities, loading, selectedCityId, setSelectedCityId, refresh])
 
   return <CityContext.Provider value={value}>{children}</CityContext.Provider>

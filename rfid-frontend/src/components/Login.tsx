@@ -48,11 +48,12 @@ const Login: React.FC = () => {
         }
         await login(formData.username, formData.password, formData.cityId || cities[0]?.id || '')
       } else {
-        const axiosErr = err as AxiosError<{ error?: string; details?: Array<{ field?: string; message?: string }> }>
+        const axiosErr = err as AxiosError<{ error?: string; message?: string; details?: Array<{ field?: string; message?: string }> }>
         const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5001'
         const validationDetails = axiosErr?.response?.data?.details?.map(d => d.message).filter(Boolean).join('; ')
+        const serverMsg = axiosErr?.response?.data?.error || axiosErr?.response?.data?.message
         const message = validationDetails
-          || axiosErr?.response?.data?.error
+          || serverMsg
           || (!axiosErr.response ? `Cannot reach API at ${baseUrl}` : 'Login failed')
         setError(message)
       }
@@ -110,6 +111,7 @@ const Login: React.FC = () => {
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
+              <p className="mt-1 text-xs text-gray-500">City must match the user’s assigned city (e.g., admin → Amsterdam).</p>
             </div>
 
             <div>
@@ -125,6 +127,7 @@ const Login: React.FC = () => {
                 value={formData.username}
                 onChange={handleChange}
               />
+              <p className="mt-1 text-xs text-gray-500">Use your username (not email).</p>
             </div>
 
             <div>

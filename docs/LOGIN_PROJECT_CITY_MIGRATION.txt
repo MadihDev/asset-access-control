@@ -1,0 +1,135 @@
+Migration plan: Switch login from City to Project+City
+
+Goal
+- Replace city-only scoping with organization-specific project identifiers combined with city, e.g., PerfectIT_Amsterdam, PerfectIT_Utrecht. Each project+city pair should scope users, locations, locks, and KPIs independently.
+
+High-level design
+- Introduce a Project entity and a join/relationship to City.
+- Update auth to accept { projectSlugOrName, cityNameOrId, username, password } and resolve the scope to a concrete projectCity (tenant) before authenticating the user.
+- All data scoping that used cityId should now use projectId+cityId (or a derived tenantId) for multi-tenant separation.
+
+Backend changes
+1) Data model (Prisma)
+- Add model Project { id, name, slug (unique), isActive, createdAt, updatedAt }
+- Add model ProjectCity (aka Tenant) { id, projectId, cityId, isActive, unique(projectId, cityId) }
+- Update User to include projectCityId (nullable initially), keep cityId for back-compat during migration.
+- Update Address/Lock/AccessLog/UserPermission to include projectCityId for scoping (nullable initially); maintain cityId columns for back-compat.
+- Add indexes:
+  - unique(Project.slug)
+  - index(ProjectCity.projectId, ProjectCity.cityId)
+  - index(User.projectCityId), index(Lock.projectCityId), index(AccessLog.projectCityId), index(UserPermission.projectCityId)
+
+2) Seed updates
+- Seed example projects (e.g., PerfectIT) and create ProjectCity rows linking to existing cities (Amsterdam, Utrecht, ...).
+- When seeding users, set their projectCityId based on selected project and city pairing.
+- Update locks/addresses to belong to a projectCity.
+
+3) Auth flow and API contracts
+- Login request body changes from { username, password, cityId } to { username, password, project, city }:
+  - project is a string (slug/name) like "PerfectIT" entered as a free-text input in the UI.
+  - city is selected from a dropdown in the UI; send the selected city name (or id if you extend the API).
+  - Optionally (backward compatible), accept a single string "project_city" and parse (e.g., "PerfectIT_Amsterdam"). Primary path is separate fields.
+- Server resolves the scope:
+  - Lookup Project by slug/name (normalize case), ensure active.
+  - Lookup City by name (normalize case), ensure active.
+  - Lookup ProjectCity by (projectId, cityId); ensure active.
+- User lookup and validation:
+  - Find user by username and projectCityId.
+  - Verify password, isActive.
+- Token claims:
+  - Include projectId and projectCityId in JWT payload for downstream scoping.
+  - On refresh, validate these claims and ensure the tenant is still active.
+- Request scoping helpers:
+  - Replace getEffectiveCityId(req) with getEffectiveScope(req) returning { projectId, cityId, projectCityId }.
+  - Update all controllers/services to filter by projectCityId (or projectId+cityId) instead of only cityId.
+
+4) Endpoints impacted
+- /api/auth/login: new request schema; add parsing for combined form "PerfectIT_Amsterdam" if provided; return project/projectCity in response.
+- NEW (recommended):
+  - GET /api/project → list active projects for the login form (optional if you keep project as free-text only).
+  - GET /api/city?project=PerfectIT → list active cities associated with a project for the login city dropdown.
+- /api/auth/profile, refresh-token: include and maintain project scope in tokens.
+- /api/user: list, create, update, delete
+  - Creation: Non-super-admins can only create users in their own projectCity; SUPER_ADMIN can span projects/cities.
+  - Add optional projectCityId in payload for SUPER_ADMIN; ignore/force for others.
+  - Queries: add filter by projectId, projectCityId; enforce in service.
+- /api/lock, /api/permission, /api/rfid, /api/audit, /api/dashboard: add scoping by projectCityId (and projectId if needed). Replace or deprecate pure cityId filters.
+- CSV exports: include project, city columns; filter by projectCityId.
+
+5) RBAC and roles
+- Roles remain (SUPER_ADMIN/ADMIN/SUPERVISOR/USER). Optionally add PROJECT_ADMIN to manage across all cities for a single project.
+- Update canManage and scope checks to consider project boundaries in addition to city.
+
+6) Migration strategy
+- Phase 1 (compat mode): Keep existing cityId fields and logic; add project tables and projectCityId columns nullable. Populate projectCityId with a default project (e.g., "Default") for existing data.
+- Phase 2: Update services to prioritize projectCityId if present; fallback to cityId for legacy rows.
+- Phase 3: Migrate all existing rows to have projectCityId; backfill from cityId.
+- Phase 4: Remove cityId-based scoping or keep as denormalized reference; finalize indexes.
+
+7) Backward compatibility
+- For some time, accept both old and new login bodies:
+  - If body has { username, password, cityId } use legacy; if has { project, city } use new; if has { tenant: "Project_City" } parse accordingly.
+- Frontend can feature-toggle the new experience while backend supports both.
+
+Frontend changes
+1) Login UI/UX
+- Replace City-only with two fields:
+  - Project: text input (free text). Optionally provide auto-complete from GET /api/project.
+  - City: select dropdown. Populate from GET /api/city?project=<project> (fallback: list all active cities if project not provided yet).
+- Validation: both fields required; normalize case and trim. Disable Sign in until a city option is chosen.
+- On submit: call new auth API with { username, password, project, city }. Keep legacy combined { tenant } only for backward compatibility.
+
+2) Auth state & storage
+- Store project (string input), city (selected value), and projectCityId in localStorage/session along with tokens.
+- Update `useAuth` and `CityContext` (rename to `ScopeContext` or `TenantContext`) to include project+city.
+- Replace all usages of `cityId` context with `projectCityId` and/or pair { project, city }.
+
+3) Pages impacted
+- Dashboard: update queries to include projectCity scope; show project+city in headers.
+- Users, Locks, Permissions, RFID: pass projectCityId (or project+city) in list queries and create/update forms; limit admin actions to current scope unless SUPER_ADMIN.
+- CSV exports: filter by projectCity and include both project and city columns.
+ - Login helpers: If project is edited, refresh city dropdown options (debounced) based on the project input.
+
+4) Environment/config
+- No change to VITE_API_URL; consider adding a feature flag `VITE_TENANT_MODE=project_city` to toggle new UI while backend supports both.
+ - Optional: `VITE_LOGIN_PROJECT_AUTOCOMPLETE=true` to enable fetching /api/project for suggestions.
+
+Data and ops
+1) Prisma migration steps
+- Add models and columns; generate client: `npx prisma migrate dev -n add-project-and-tenant`.
+- Backfill projectCityId from cityId using a script:
+  - Create a default Project (e.g., "Default").
+  - For each distinct cityId, create ProjectCity with Default project.
+  - Update users/locks/permissions/accessLogs to set projectCityId via joins.
+
+2) Seed updates
+- Seed sample Project: PerfectIT.
+- Create ProjectCity rows for (PerfectIT x Amsterdam), (PerfectIT x Utrecht), etc.
+- Seed demo users in each projectCity.
+
+3) Indexing and performance
+- Queries that previously filtered by cityId should now filter by projectCityId (single column) for efficiency.
+
+4) Testing & QA
+- Unit: auth resolver (project+city to tenant), RBAC scope, token generation with tenant claims.
+- Integration: login flows with project text input + city dropdown (success/fail/invalid city/project), list users scoped, create/update respecting projectCity.
+- E2E smoke: switch between two tenants with same usernames (PerfectIT_Amsterdam admin vs PerfectIT_Utrecht admin) and ensure isolation.
+
+Rollout plan
+- Deploy backend with dual-mode login first; ensure existing clients unaffected.
+- Deploy frontend with feature flag default off; enable per environment, test tenants.
+- Migrate data and enable new mode after validation; keep fallback for a time.
+
+Risks and mitigations
+- Risk: Inconsistent scope usage across services. Mitigation: centralize `getEffectiveScope` and update all controllers to consume it.
+- Risk: Data migration complexity. Mitigation: staged migration and back-compat with cityId; add one-off scripts.
+- Risk: UX confusion with two similar tenants. Mitigation: show project+city prominently in header and confirmation dialogs.
+
+Developer checklist (summary)
+- [ ] Add Project and ProjectCity models; add projectCityId to scoped tables.
+- [ ] Update seed to create projects and projectCities; assign users/locks accordingly.
+- [ ] Modify auth to parse project+city (or tenant string); include tenant in JWT.
+- [ ] Update scoping helpers and services to use projectCityId.
+- [ ] Update frontend login UI and auth state to include project+city; rename contexts.
+- [ ] Adjust all list/detail/create/update calls to include scope.
+- [ ] Backfill legacy data; run comprehensive tests.

@@ -1,0 +1,185 @@
+How users and locks are created
+
+1) During database seed (recommended for local/dev)
+- Command: from backend folder
+  - npm run db:seed
+- What it does:
+  - Clears existing demo data safely (access logs, audit logs, refresh tokens, permissions, RFID keys, locks, addresses, users, cities, etc.)
+  - Creates cities (Amsterdam, Rotterdam, The Hague, Utrecht, Eindhoven)
+  - Creates addresses for each city
+  - Creates sample locks (about 10 total across the first few addresses)
+  - Creates demo users with roles:
+    - SUPER_ADMIN: admin / password123 (Amsterdam)
+    - ADMIN: manager / password123 (Rotterdam)
+    - SUPERVISOR: supervisor / password123 (The Hague)
+    - USER: user1 / password123 (Utrecht)
+    - USER: user2 / password123 (Eindhoven)
+  - Assigns users to cities
+  - Issues RFID keys for each user
+  - Grants user permissions to locks (admins get all locks; regular users get a few random locks)
+  - Generates sample access logs and config/templates
+
+2) Via API (runtime, role-restricted)
+- Users
+  - Endpoint: POST /api/user
+  - Auth: Bearer token, role ADMIN or SUPER_ADMIN
+  - Body (example):
+    {
+      "email": "alice@example.com",
+      "username": "alice",
+      "firstName": "Alice",
+      "lastName": "Wong",
+      "password": "ComplexP@ssw0rd!",
+      "role": "USER",
+      "cityId": "<CITY_ID>"  // If not SUPER_ADMIN, cityId is forced to your own city
+    }
+  - Notes:
+    - Validation enforces email/username/password complexity.
+    - Non-super admins can only create users in their own city.
+    - Audit logs record CREATE events.
+
+- Locks
+  - Listing + details exists, but creation is typically provisioned offline in this demo seed.
+  - To simulate lock presence / online ping:
+    - POST /api/lock/:id/ping (Manager+)
+  - To update lock metadata (name, isActive):
+    - PUT /api/lock/:id (Admin+)
+
+3) Bulk operations (location-scoped)
+- Users, keys, and permissions have bulk endpoints scoped by location in the Location Overview pages.
+- For keys in bulk (example):
+  - POST /api/location/:addressId/keys/assign (Admin+)
+  - Body: { items: [{ userId, cardId, name?, expiresAt? }, ...] }
+  - Limits: MAX_LOCATION_BULK_ITEMS (default 500) and rate limiting applied.
+
+4) Simulation (no hardware required)
+- Dev-only (set ENABLE_SIM_ROUTES=true in backend .env)
+  - POST /api/sim/access-attempt { cardId, lockId, accessType?, deviceInfo? }
+  - This mirrors devices posting to /api/lock/access-attempt and updates logs/KPIs.
+
+5) Frontend flows
+- City-aware login (username/password + city)
+- Dashboard shows KPIs for the selected city.
+- User Management (Admin+): create/update/delete users via UI which calls the APIs above.
+- Locks: list, ping, and update.
+
+Troubleshooting / Tips
+- If dashboard shows zeros, select a city with locks (Amsterdam) and hard-refresh.
+- After reseeding, a previously stored cityId may be invalid. The app now auto-clears stale cityId on load.
+- Ensure frontend VITE_API_URL matches backend port (default http://localhost:5000).
+- To regenerate Prisma client/migrate/seed:
+  - docker compose up -d db
+  - cd backend
+  - npm run db:migrate
+  - npm run db:seed
+
+6) RFID Keys (creation, assignment, revocation)
+- Overview
+  - Keys are stored as RFIDKey records and linked to a User.
+  - A key is considered active if `isActive=true` and either `expiresAt` is null or in the future.
+  - Dashboard KPIs count active keys (scoped by city if selected).
+
+- List keys (Manager+)
+  - GET /api/rfid
+
+- Create a key (Admin)
+  - POST /api/rfid
+  - Body (example):
+    {
+      "cardId": "CARD-ABC123",
+      "userId": "<USER_ID>",
+      "name": "Lobby Card",
+      "expiresAt": "2026-01-01T00:00:00.000Z" // optional
+    }
+
+- Assign a key to a user (Admin)
+  - POST /api/rfid/assign
+  - Body (example):
+    {
+      "cardId": "CARD-XYZ999",
+      "userId": "<USER_ID>",
+      "name": "Temporary Visitor",
+      "expiresAt": "2025-12-31T23:59:59.000Z" // optional; if omitted, may default to +6h in this demo
+    }
+  - Notes:
+    - Validates `cardId` and `userId` formats; enforces max lengths.
+    - Creates the key if needed and links it to the user.
+
+- Update a key (Admin)
+  - PUT /api/rfid/:id
+  - Body (example): { "name": "New Label", "isActive": true, "expiresAt": "<ISO8601>" }
+
+- Revoke a key (Admin)
+  - POST /api/rfid/revoke
+  - Body (example): { "id": "<KEY_ID>" } or { "cardId": "CARD-XYZ999" }
+  - Either `id` or `cardId` is required.
+
+- Bulk assign keys (Admin+, location-scoped)
+  - POST /api/location/:addressId/keys/assign
+  - Body (example): { "items": [{ "userId": "<USER_ID>", "cardId": "CARD-1", "name": "Badge 1", "expiresAt": "<ISO8601>" }, ...] }
+  - Limits: `MAX_LOCATION_BULK_ITEMS` and rate limiting apply.
+
+- Simulate usage (no hardware)
+  - POST /api/sim/access-attempt (dev-only if ENABLE_SIM_ROUTES=true)
+    { "cardId": "<CARD_ID>", "lockId": "<LOCK_ID>", "accessType": "RFID_CARD", "deviceInfo": { ... } }
+  - Or public device endpoint: POST /api/lock/access-attempt
+  - This writes to access logs and updates real-time KPIs.
+
+- Seeded keys (dev)
+  - The seed issues one key per demo user with a 1-year expiry.
+  - Admin/Manager users are granted permissions to all locks; others get a few random locks.
+
+
+7) Expiry windows: 6-hour default and custom dates
+- Temporary access (6-hour default)
+  - When assigning a key via `POST /api/rfid/assign`, if you do not provide `expiresAt`, the backend defaults the expiry to “now + 6 hours”.
+  - This is useful for visitors or short-term access without needing to specify a date each time.
+
+- Setting a specific expiry date/time (keys)
+  - You can explicitly set `expiresAt` in the request body using an ISO 8601 timestamp, for example:
+    {
+      "cardId": "CARD-XYZ999",
+      "userId": "<USER_ID>",
+      "expiresAt": "2025-12-31T23:59:59.000Z"
+    }
+  - In the app’s key assignment UI (and bulk CSV import), you can supply an expiry date/time; leaving it blank uses the 6-hour default.
+
+- Permission time windows (validFrom / validTo)
+  - User-to-lock permissions are modeled in `UserPermission` with `validFrom` (defaults to now) and optional `validTo`.
+  - Create/update via:
+    - POST `/api/permission` with `{ userId, lockId, validFrom?, validTo?, canAccess? }`
+    - PUT `/api/permission/:id` to adjust times later
+  - In the app (Location Overview / Admin Connect screens), you can enter a date/time window for grants. If `validTo` is omitted, access remains open-ended until revoked.
+
+- How KPIs treat time windows
+  - “Active Keys” count keys that are `isActive=true` and not expired (`expiresAt` is null or in the future), scoped by city if selected.
+  - Access attempts are allowed only when the user holds a valid key and a current permission (within `validFrom` ≤ now < `validTo` when set).
+  - The dashboard “Active Users” includes users with an active key or a recent successful access (last 15 minutes), respecting the city scope.
+
+- Tips
+  - Use explicit `expiresAt` for scheduled departures; rely on the 6-hour default for ad‑hoc guest access.
+  - For bulk onboarding, include an `expiresAt` column in your CSV to standardize expiry across many users.
+
+
+8) Why deleted users remain visible as Inactive (soft delete)
+- What happens when you "delete" a user
+  - The API `DELETE /api/user/:id` does a soft delete: it sets `isActive=false` on the user instead of removing the row from the database.
+  - No records are physically removed. Existing relationships (RFID keys, permissions, audit logs, access logs) remain intact for traceability.
+
+- Why we use soft delete here
+  - Safety and auditability: Removing a user would orphan or break references in audit/access logs. Keeping the row allows full history and compliance.
+  - Referential integrity: Prisma/DB relations (keys, permissions, logs) continue to resolve without cascading deletes.
+  - Reversibility: An admin can re-enable a user later by setting `isActive=true` via the update endpoint if needed.
+
+- How the UI reflects this
+  - After deletion, the user row stays in the list with the Status shown as "Inactive".
+  - Use the Status filter in the User Management page to switch between `All`, `Active`, and `Inactive` users. Selecting `Active` hides soft-deleted users.
+
+- Effects on access and permissions
+  - Inactive users cannot authenticate or be granted effective access; server-side checks treat `isActive=false` as not allowed and access attempts are denied (e.g., "DENIED_INACTIVE_USER").
+  - Existing RFID keys and permissions remain in data for history, but runtime checks consider the user’s active status before allowing access.
+
+- API semantics and reactivation
+  - Delete: `DELETE /api/user/:id` → sets `isActive=false` and returns 200.
+  - Reactivate or change details: `PUT /api/user/:id` with `{ isActive: true }` (Admin+).
+  - Hard delete is intentionally not exposed via API in this demo. If you truly need to purge a user (e.g., for test data), do so via seed reset or a maintenance script, understanding this will also impact historical logs.

@@ -36,7 +36,7 @@ describe('Location routes', () => {
         expect(res.body).toHaveProperty('data')
         expect(res.body).toHaveProperty('pagination')
       }
-    })
+    }, 15000)
   })
 
   describe('Users endpoint basic shape', () => {

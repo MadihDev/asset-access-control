@@ -12,7 +12,7 @@ router.get('/', async (_req, res) => {
       orderBy: { name: 'asc' }
     })
     res.json({ success: true, data: cities })
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, error: 'Failed to load cities' })
   }
 })

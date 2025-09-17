@@ -12,6 +12,7 @@ async function main() {
   await prisma.$transaction([
     prisma.accessLog.deleteMany(),
     prisma.auditLog.deleteMany(),
+    prisma.refreshToken.deleteMany(),
     prisma.userPermission.deleteMany(),
     prisma.rFIDKey.deleteMany(),
     prisma.lock.deleteMany(),

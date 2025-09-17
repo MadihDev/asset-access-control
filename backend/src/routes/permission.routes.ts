@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import PermissionController from '../controllers/permission.controller'
 import { authenticateToken, requireManagerOrAbove } from '../middleware/auth.middleware'
-import { handleValidationErrors, validateCreatePermission, validateUpdatePermission } from '../middleware/validation.middleware'
+import { validateCreatePermission, validateUpdatePermission } from '../middleware/validation.middleware'
 
 const router = Router()
 

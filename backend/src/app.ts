@@ -13,6 +13,7 @@ import rfidRoutes from './routes/rfid.routes'
 import auditRoutes from './routes/audit.routes'
 import cityRoutes from './routes/city.routes'
 import locationRoutes from './routes/location.routes'
+import simRoutes from './routes/sim.routes'
 
 // Load environment variables
 dotenv.config()
@@ -42,6 +43,10 @@ app.use('/api/rfid', rfidRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/city', cityRoutes)
 app.use('/api/location', locationRoutes)
+// Dev/test-only simulation routes
+if (process.env.ENABLE_SIM_ROUTES === 'true') {
+  app.use('/api/sim', simRoutes)
+}
 
 // ERROR HANDLER (last)
 app.use(errorHandler)

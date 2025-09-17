@@ -1,0 +1,60 @@
+Frontend Report
+
+1) Tech stack & dependencies
+- Framework: React 19 + TypeScript, Vite 5
+- State/data: @tanstack/react-query v5
+- Router: react-router-dom v7
+- HTTP: axios
+- Realtime: socket.io-client
+- Styling: Tailwind CSS v4 with PostCSS (@tailwindcss/postcss), utility-first classes
+- Testing: Vitest + @testing-library/react + happy-dom/jsdom (configured)
+- Linting: ESLint 9 + eslint-plugin-react-hooks + react-refresh plugin
+
+2) Implemented features
+- Authentication
+  - Login page with city selection; calls POST /api/auth/login and stores access/refresh tokens in localStorage via AuthContext
+  - Profile loading on app start via GET /api/auth/profile; logout clears tokens
+  - Protected routes via <ProtectedRoute> with role-based gating (SUPER_ADMIN, ADMIN, SUPERVISOR, USER)
+- City scoping
+  - CityContext fetches GET /api/city, persists selected cityId in localStorage, broadcasts city change events
+  - Navigation shows a city selector for SUPER_ADMIN
+- Dashboard
+  - GET /api/dashboard with optional cityId query; shows KPIs (users, locks, access attempts, successes, online locks, active keys), recent access logs, and per-location KPIs (active users/keys, active/total locks, success rate)
+  - Sorting controls on locations (name/activeUsers/successRate) and links to access logs filtered by addressId
+  - Developer action to simulate an access attempt (POST /api/lock/access-attempt) in dev
+  - Live refresh via WebSocket events (key.assigned/revoked/expired, kpi:update, access.created)
+- Users
+  - UserManagement page: list/search/sort/paginate users; create/edit/delete users (Admin+), role gating; export CSV via /api/user/export
+  - View user details with permissions and RFID keys tabs
+  - Manage permissions: list, grant, revoke via /api/permission endpoints
+  - Manage RFID keys: list, activate/deactivate, add new via /api/rfid endpoints
+- Locks
+  - List locks with filters (active/online) scoped by city; actions: ping (Manager+), toggle active (Admin+)
+- Access Logs
+  - Paginated table with filters (userId, lockId, addressId, result, type, date range), sorting; export CSV
+- Audit Logs
+  - Paginated table with filters and sorting
+- Notifications
+  - Toast system with success/error helpers; viewport UI component
+- Reusable UI primitives
+  - FilterBar, DataTable, Pagination, Modal patterns across pages
+- WebSocket client
+  - useWebSocket hook subscribes to events and dispatches window events; city-scoped via query parameters
+
+3) Missing features / gaps
+- Tenant (Project + City) mode UI not present; app currently supports only city-based scoping
+- Post-login redirect to user-assigned location(s) listed as desired in docs is not implemented
+- Location Details page is present (src/pages/LocationDetails.tsx) and wired to services, but Nav/App route is `/location/:addressId` while docs/checklist use `/locations/:addressId`; some UI for bulk actions exists but not linked from Navigation
+- Some referenced UI components (ui/DataTable, ui/FilterBar, ui/Pagination) exist, but there is no global layout/sidebar system described in ARCHITECTURE.md (acceptable deviation)
+- Limited frontend tests; vitest config exists but few tests are present (one navigation test mentioned)
+- System health panel and charts not implemented
+
+4) Risks / technical debt
+- Token storage in localStorage without httpOnly cookies; relies on Authorization header injection inside `services/api.ts` (not shown here) and refresher in Auth flows; risk for XSS token theft
+- No robust refresh token flow visible on the client (AuthContext stores refreshToken but retry logic/interceptor not confirmed here)
+- Routing inconsistency: `/location/:addressId` vs docs `/locations/:addressId`; links from Dashboard use `/location/...` which is fine but deviate from docs
+- City vs Tenant migration: many API calls accept `cityId`; migration to projectCityId will require context rename and query param refactors
+- WebSocket auth uses token in querystring; consider auth handshake or headers; ensure server verifies token and scopes subscriptions
+- CSV exports use `fetch` with Authorization for users but axios for logs; mixed patterns
+- Accessibility: many interactive elements lack ARIA labels; keyboard focus management in modals is basic
+- Tailwind v4 adoption requires careful purge/content config; config looks correct, but ensure class names remain static enough for extraction

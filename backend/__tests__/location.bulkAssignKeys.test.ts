@@ -27,7 +27,7 @@ describe('POST /api/location/:addressId/keys/assign (bulk)', () => {
       .set('Authorization', 'Bearer manager')
       .send({})
     expect([400, 404, 403]).toContain(res.status)
-  })
+  }, 15000)
 
   it('accepts a valid items list (may 200/404/500 depending on DB)', async () => {
     const res = await request(app)

@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import AuthService from '../services/auth.service'
 import AuditService from '../services/audit.service'
 import { AuditAction } from '../types'
-import { LoginRequest, CreateUserRequest } from '../types'
+import { LoginRequest } from '../types'
 
 class AuthController {
   async login(req: Request, res: Response): Promise<void> {
