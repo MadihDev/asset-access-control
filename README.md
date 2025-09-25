@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/MadihDev/asset-access-control/actions/workflows/ci.yml/badge.svg)](https://github.com/MadihDev/asset-access-control/actions/workflows/ci.yml)
 
-City‑aware, full‑stack system for managing RFID keys and access to locks, with audits, dashboards, role‑based access control, and Netherlands‑only city filtering.
+City‑aware, full‑stack system for managing RFID keys and access to locks, with audits, dashboards, role‑based access control, and project-city tenant isolation.
 
 This README gives you a concise yet complete briefing: what the app does, what’s implemented today, what’s still in progress, how to run it on Windows (PowerShell), and where to go next.
 

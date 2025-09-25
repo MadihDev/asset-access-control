@@ -28,7 +28,7 @@ export function initWebSocket(httpServer: HttpServer) {
       const secret = process.env.JWT_SECRET || 'fallback-secret-key'
       const payload = jwt.verify(token, secret) as JWTPayload
       ;(socket as any).user = { id: payload.userId, role: payload.role }
-      ;(socket as any).cityId = socket.handshake.auth?.cityId || undefined
+      ;(socket as any).projectCityId = socket.handshake.auth?.projectCityId || payload.projectCityId || undefined
       next()
     } catch (_err) {
       next(new Error('Unauthorized'))
@@ -36,13 +36,13 @@ export function initWebSocket(httpServer: HttpServer) {
   })
 
   io.on('connection', (socket: Socket) => {
-    const cityId = (socket as any).cityId as string | undefined
-    if (cityId) {
-      socket.join(`city:${cityId}`)
+    const projectCityId = (socket as any).projectCityId as string | undefined
+    if (projectCityId) {
+      socket.join(`projectCity:${projectCityId}`)
     }
 
     socket.on('disconnect', () => {
-      if (cityId) socket.leave(`city:${cityId}`)
+      if (projectCityId) socket.leave(`projectCity:${projectCityId}`)
     })
   })
 
@@ -54,7 +54,7 @@ export function getIO(): Server {
   return io
 }
 
-export function emitToCity(cityId: string, event: string, payload: any) {
+export function emitToProjectCity(projectCityId: string, event: string, payload: any) {
   if (!io) return
-  io.to(`city:${cityId}`).emit(event, payload)
+  io.to(`projectCity:${projectCityId}`).emit(event, payload)
 }

@@ -6,12 +6,22 @@ export interface AuthUser {
   firstName: string
   lastName: string
   role: string
+  projectCityId?: string
+  cityId?: string
+}
+
+export interface LoginCredentials {
+  username: string
+  password: string
+  cityId?: string
+  projectId?: string
+  cityName?: string
 }
 
 export interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
-  login: (username: string, password: string, cityId: string) => Promise<void>
+  login: (credentials: LoginCredentials) => Promise<void>
   logout: () => void
 }
 

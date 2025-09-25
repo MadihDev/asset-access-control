@@ -10,6 +10,9 @@ router.use(authenticateToken)
 // List keys (Manager+)
 router.get('/', requireManagerOrAbove, RFIDController.list)
 
+// List available (unassigned/inactive) keys (Manager+)
+router.get('/available', requireManagerOrAbove, RFIDController.available)
+
 // Create new key (Admin)
 router.post('/', requireAdmin, validateCreateRFIDKey, RFIDController.create)
 

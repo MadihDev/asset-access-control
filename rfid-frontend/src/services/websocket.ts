@@ -7,7 +7,7 @@ export type WSOptions = {
 }
 
 export function createSocket({ baseUrl, token, cityId }: WSOptions): Socket {
-  const url = baseUrl || (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5001'
+  const url = baseUrl || (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5000'
   const socket = io(url, {
     transports: ['websocket'],
     auth: {

@@ -18,18 +18,35 @@ class AuthService {
   }
 
   async login(loginData: LoginRequest): Promise<LoginResponse> {
-    const { username, password, cityId } = loginData
+    const { username, password, projectId, cityName } = loginData
 
-    // Ensure city exists and is active
-    const city = await prisma.city.findUnique({ where: { id: cityId } })
-    if (!city || !city.isActive) {
-      throw new Error('Invalid city')
+    // Project-city mode: find projectCity first
+    let user: any = null
+    let resolvedProjectCityId: string | undefined = undefined
+
+    if (projectId && cityName) {
+      // Find projectCity first
+      const projectCity = await prisma.projectCity.findFirst({
+        where: {
+          project: { name: projectId }, // projectId is project name for now
+          city: { name: cityName }
+        },
+        include: { project: true, city: true }
+      })
+
+      if (!projectCity || !projectCity.project.isActive || !projectCity.city.isActive) {
+        throw new Error('Invalid project or city')
+      }
+
+      resolvedProjectCityId = projectCity.id
+
+      // Find user by username and projectCityId
+      user = await prisma.user.findFirst({
+        where: { username, projectCityId: resolvedProjectCityId }
+      })
+    } else {
+      throw new Error('Both projectId and cityName must be provided')
     }
-
-    // Find user by username and city
-    const user = await prisma.user.findFirst({
-      where: { username, cityId }
-    })
 
     if (!user) {
       throw new Error('Invalid credentials')
@@ -61,16 +78,16 @@ class AuthService {
       lastName: rest.lastName,
       role: rest.role as unknown as UserRole,
       isActive: rest.isActive,
-      cityId: rest.cityId ?? undefined,
+      projectCityId: resolvedProjectCityId || (rest.projectCityId ?? undefined),
       createdAt: rest.createdAt,
       updatedAt: rest.updatedAt,
       lastLoginAt: rest.lastLoginAt ?? undefined
     }
 
-  // Generate tokens
-  const accessToken = this.generateAccessToken(responseUser)
-  const issued = await this.issueRefreshToken(responseUser)
-  const refreshToken = issued.token
+    // Generate tokens
+    const accessToken = this.generateAccessToken(responseUser)
+    const issued = await this.issueRefreshToken(responseUser)
+    const refreshToken = issued.token
 
     return {
       user: responseUser,
@@ -143,7 +160,7 @@ class AuthService {
         lastName: rest.lastName,
         role: rest.role as unknown as UserRole,
         isActive: rest.isActive,
-        cityId: rest.cityId ?? undefined,
+        projectCityId: (rest as any).projectCityId ?? undefined,
         createdAt: rest.createdAt,
         updatedAt: rest.updatedAt,
         lastLoginAt: rest.lastLoginAt ?? undefined
@@ -190,15 +207,62 @@ class AuthService {
     // 2. Store it in the database with expiration
     // 3. Send email with reset link
     
-  // For now, we'll just log it
-  logger.info(`Password reset requested for: ${email}`)
+    // For now, we'll just log it
+    logger.info(`Password reset requested for: ${email}`)
   }
 
-  private generateAccessToken(user: Pick<User, 'id' | 'email' | 'role'>): string {
+  /**
+   * Generate tokens for a user (used for 2FA completion)
+   */
+  async generateTokensForUser(userId: string): Promise<LoginResponse> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        projectCity: { include: { project: true, city: true } }
+      }
+    })
+
+    if (!user || !user.isActive) {
+      throw new Error('User not found or inactive')
+    }
+
+    // Build the response user object similar to login method
+    const { password: _password, createdById: _createdById, ...rest } = user
+    const responseUser: User = {
+      ...rest,
+      projectCityId: rest.projectCityId ?? undefined,
+      createdAt: rest.createdAt,
+      updatedAt: rest.updatedAt,
+      lastLoginAt: rest.lastLoginAt ?? undefined
+    }
+
+    // Generate tokens
+    const accessToken = this.generateAccessToken(responseUser)
+    const issued = await this.issueRefreshToken(responseUser)
+    const refreshToken = issued.token
+
+    // Update last login time
+    await prisma.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() }
+    })
+
+    return {
+      user: responseUser,
+      accessToken,
+      refreshToken,
+      expiresIn: this.getTokenExpirationTime()
+    }
+  }
+
+  private generateAccessToken(
+    user: Pick<User, 'id' | 'email' | 'role'> & Partial<Pick<User, 'projectCityId'>>
+  ): string {
     const payload: JWTPayload = {
       userId: user.id,
       email: user.email,
-      role: user.role as unknown as UserRole
+      role: user.role as unknown as UserRole,
+      projectCityId: user.projectCityId
     }
 
     return jwt.sign(payload, this.jwtSecret, {
@@ -207,7 +271,7 @@ class AuthService {
   }
 
   private async issueRefreshToken(
-    user: Pick<User, 'id' | 'email' | 'role'>,
+    user: Pick<User, 'id' | 'email' | 'role'> & Partial<Pick<User, 'projectCityId'>>,
     tx?: Prisma.TransactionClient
   ): Promise<{ token: string; recordId: string; jti: string }> {
     const jti = crypto.randomUUID()
@@ -224,6 +288,7 @@ class AuthService {
       userId: user.id,
       email: user.email,
       role: user.role as unknown as UserRole,
+      projectCityId: user.projectCityId,
       jti
     }
 

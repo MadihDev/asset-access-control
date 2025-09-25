@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import api from '../services/api'
-import { AuthContext } from './auth-context'
+import { AuthContext, type LoginCredentials } from './auth-context'
 import type { AuthUser } from './auth-context'
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -27,8 +27,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })()
   }, [])
 
-  const login = useCallback(async (username: string, password: string, cityId: string) => {
-    const { data } = await api.post('/api/auth/login', { username, password, cityId })
+  const login = useCallback(async (credentials: LoginCredentials) => {
+    const { data } = await api.post('/api/auth/login', credentials)
+    
+    // Validate response structure
+    if (!data.data || !data.data.accessToken || !data.data.refreshToken || !data.data.user) {
+      throw new Error('Invalid login response format')
+    }
+    
     const token: string = data.data.accessToken
     const rtoken: string = data.data.refreshToken
     localStorage.setItem('token', token)

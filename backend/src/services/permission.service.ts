@@ -4,31 +4,31 @@ import { CreatePermissionRequest, UserPermission } from '../types'
 const prisma = new (Prisma as any).PrismaClient()
 
 class PermissionService {
-  async getUserCity(userId: string): Promise<string | null> {
-    const u = await prisma.user.findUnique({ where: { id: userId }, select: { cityId: true } })
-    return u?.cityId ?? null
+  async getUserProjectCity(userId: string): Promise<string | null> {
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { projectCityId: true } })
+    return u?.projectCityId ?? null
   }
 
-  async getLockCity(lockId: string): Promise<string | null> {
-    const l = await prisma.lock.findUnique({ where: { id: lockId }, select: { address: { select: { cityId: true } } } })
-    return l?.address?.cityId ?? null
+  async getLockProjectCity(lockId: string): Promise<string | null> {
+    const l = await prisma.lock.findUnique({ where: { id: lockId }, select: { address: { select: { projectCityId: true } } } })
+    return l?.address?.projectCityId ?? null
   }
 
-  async getPermissionCities(id: string): Promise<{ userCityId: string | null; lockCityId: string | null }> {
+  async getPermissionProjectCities(id: string): Promise<{ userProjectCityId: string | null; lockProjectCityId: string | null }> {
     const p = await prisma.userPermission.findUnique({
       where: { id },
-      select: { user: { select: { cityId: true } }, lock: { select: { address: { select: { cityId: true } } } } }
+      select: { user: { select: { projectCityId: true } }, lock: { select: { address: { select: { projectCityId: true } } } } }
     })
-    return { userCityId: p?.user?.cityId ?? null, lockCityId: p?.lock?.address?.cityId ?? null }
+    return { userProjectCityId: p?.user?.projectCityId ?? null, lockProjectCityId: p?.lock?.address?.projectCityId ?? null }
   }
-  async list(userId?: string, lockId?: string, cityId?: string): Promise<UserPermission[]> {
+  async list(userId?: string, lockId?: string, projectCityId?: string): Promise<UserPermission[]> {
     const where: any = {}
     if (userId) where.userId = userId
     if (lockId) where.lockId = lockId
-    if (cityId) {
+    if (projectCityId) {
       where.AND = [
-        { user: { cityId } },
-        { lock: { address: { cityId } } }
+        { user: { projectCityId } },
+        { lock: { address: { projectCityId } } }
       ]
     }
     const items = await prisma.userPermission.findMany({
@@ -41,17 +41,34 @@ class PermissionService {
 
   async assign(data: CreatePermissionRequest): Promise<UserPermission> {
     const { userId, lockId, validFrom, validTo, canAccess = true } = data
+    
+    // Calculate 12-hour expiry from now (all permissions must expire)
+    const now = new Date()
+    const mandatoryValidTo = new Date(now.getTime() + 12 * 60 * 60 * 1000) // 12 hours from now
+    
     const existing = await prisma.userPermission.findUnique({ where: { userId_lockId: { userId, lockId } } })
     if (existing) {
-      // Update existing link
+      // Update existing permission - always apply 12-hour expiry
       const updated = await prisma.userPermission.update({
         where: { userId_lockId: { userId, lockId } },
-        data: { canAccess, validFrom: validFrom ?? existing.validFrom, validTo: validTo ?? existing.validTo }
+        data: { 
+          canAccess, 
+          validFrom: validFrom ?? existing.validFrom, 
+          validTo: validTo ?? mandatoryValidTo 
+        }
       })
       return updated as UserPermission
     }
+    
+    // Create new permission - always with 12-hour expiry
     const created = await prisma.userPermission.create({
-      data: { userId, lockId, canAccess, validFrom: validFrom ?? new Date(), validTo }
+      data: { 
+        userId, 
+        lockId, 
+        canAccess, 
+        validFrom: validFrom ?? now, 
+        validTo: validTo ?? mandatoryValidTo 
+      }
     })
     return created as UserPermission
   }

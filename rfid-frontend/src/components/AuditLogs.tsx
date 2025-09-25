@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import api from '../services/api'
 import { Table, Thead, Tbody, Tr, Th, Td } from './ui/DataTable'
 import { Pagination } from './ui/Pagination'
-import { FilterBar } from './ui/FilterBar'
 
 type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'PERMISSION_GRANT' | 'PERMISSION_REVOKE' | 'ACCESS_ATTEMPT'
 
@@ -20,7 +19,7 @@ export default function AuditLogs() {
 
   const params = useMemo(() => ({ page, limit, sortBy, sortOrder, action, userId, entityType, startDate, endDate }), [page, limit, sortBy, sortOrder, action, userId, entityType, startDate, endDate])
 
-  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['audit-logs', params],
     queryFn: async () => {
       const res = await api.get('/api/audit', { params })
@@ -46,14 +45,11 @@ export default function AuditLogs() {
       <h1 className="text-2xl font-semibold text-gray-900 mb-4">Audit Logs</h1>
 
       <div className="bg-white rounded-lg shadow-md p-6">
-        <FilterBar
-          onSubmit={(e) => { e.preventDefault(); setPage(1); refetch() }}
-          onReset={() => { setAction(''); setUserId(''); setEntityType(''); setStartDate(''); setEndDate(''); setPage(1) }}
-          isRefreshing={isFetching}
-        >
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-4">
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
           <div>
             <label className="block text-sm font-medium text-gray-700">Action</label>
-            <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={action} onChange={e => setAction(e.target.value as AuditAction | '')}>
+            <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={action} onChange={e => { setAction(e.target.value as AuditAction | ''); setPage(1) }}>
               <option value="">All</option>
               <option value="CREATE">CREATE</option>
               <option value="UPDATE">UPDATE</option>
@@ -67,21 +63,25 @@ export default function AuditLogs() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">User ID</label>
-            <input className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={userId} onChange={e => setUserId(e.target.value)} placeholder="Filter by user id" />
+            <input className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={userId} onChange={e => { setUserId(e.target.value); setPage(1) }} placeholder="Filter by user id" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Entity Type</label>
-            <input className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={entityType} onChange={e => setEntityType(e.target.value)} placeholder="e.g. User, RFIDKey" />
+            <input className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={entityType} onChange={e => { setEntityType(e.target.value); setPage(1) }} placeholder="e.g. User, RFIDKey" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Start Date</label>
-            <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1) }} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">End Date</label>
-            <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1) }} />
           </div>
-        </FilterBar>
+        </div>
+        <div className="md:ml-auto flex items-center gap-2">
+          <button type="button" className="px-3 py-2 bg-white border rounded-md" onClick={() => { setAction(''); setUserId(''); setEntityType(''); setStartDate(''); setEndDate(''); setPage(1) }}>Reset</button>
+        </div>
+      </div>
 
         {(() => {
           if (isLoading) {
@@ -104,9 +104,36 @@ export default function AuditLogs() {
               <Table>
                 <Thead>
                   <Tr>
-                    <Th className="cursor-pointer" onClick={() => toggleSort('timestamp')}>Timestamp</Th>
-                    <Th className="cursor-pointer" onClick={() => toggleSort('action')}>Action</Th>
-                    <Th className="cursor-pointer" onClick={() => toggleSort('entityType')}>Entity</Th>
+                    <Th className="cursor-pointer select-none" onClick={() => toggleSort('timestamp')}>
+                      <div className="flex items-center gap-1">
+                        Timestamp
+                        {sortBy === 'timestamp' && (
+                          <span className="text-xs">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </Th>
+                    <Th className="cursor-pointer select-none" onClick={() => toggleSort('action')}>
+                      <div className="flex items-center gap-1">
+                        Action
+                        {sortBy === 'action' && (
+                          <span className="text-xs">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </Th>
+                    <Th className="cursor-pointer select-none" onClick={() => toggleSort('entityType')}>
+                      <div className="flex items-center gap-1">
+                        Entity
+                        {sortBy === 'entityType' && (
+                          <span className="text-xs">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </Th>
                     <Th>User</Th>
                     <Th>Entity ID</Th>
                     <Th>IP</Th>

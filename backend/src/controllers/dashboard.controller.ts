@@ -1,32 +1,28 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
-import { UserRole } from '../types'
+import { accessLogStrictScopeWhere, addressScopeWhere, lockScopeWhere, userScopeWhere } from '../lib/scope'
 
 class DashboardController {
   async overview(req: Request, res: Response) {
-    // Scope by city if provided or if user is not admin-level
-    const cityIdFromQuery = (req.query.cityId as string) || undefined
+    // Scope by project-city for users
     const user = req.user
 
-    const isManagerOrAbove = user && [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPERVISOR].includes(user.role)
-
-    const effectiveCityId = cityIdFromQuery || (!isManagerOrAbove ? user?.cityId : undefined)
-
     // Build where clauses
-    const userWhere: any = {}
-    const addressWhere: any = {}
-    const lockWhere: any = {}
-  const rfidKeyWhere: any = { isActive: true }
+    const userWhere: any = userScopeWhere(req) || {}
+    const addressWhere: any = addressScopeWhere(req) || {}
+    const lockWhere: any = lockScopeWhere(req) || {}
+    const rfidKeyWhere: any = { isActive: true }
     const now = new Date()
     // active key = isActive and (no expiresAt or expiresAt > now)
     rfidKeyWhere.OR = [{ expiresAt: null }, { expiresAt: { gt: now } }]
 
-    if (effectiveCityId) {
-      userWhere.cityId = effectiveCityId
-      addressWhere.cityId = effectiveCityId
-      lockWhere.address = { cityId: effectiveCityId }
-      // Also scope active keys by user.cityId when city filter is applied
-      rfidKeyWhere.user = { cityId: effectiveCityId }
+    // Enforce tenant isolation for ALL users regardless of role
+    // ADMIN/SUPERVISOR roles only give more permissions WITHIN their tenant, not across tenants
+    if (user?.projectCityId) {
+      userWhere.projectCityId = user.projectCityId
+      addressWhere.projectCityId = user.projectCityId
+      lockWhere.projectCityId = user.projectCityId
+      rfidKeyWhere.projectCityId = user.projectCityId // Direct projectCityId filtering
     }
 
     const [
@@ -42,14 +38,12 @@ class DashboardController {
       prisma.lock.count({ where: lockWhere }),
       prisma.lock.count({ where: { ...lockWhere, isOnline: true } }),
       prisma.rFIDKey.count({ where: rfidKeyWhere }),
+      prisma.accessLog.count({ where: accessLogStrictScopeWhere(req) || undefined }),
       prisma.accessLog.count({
-        where: effectiveCityId ? { lock: { address: { cityId: effectiveCityId } } } : undefined,
-      }),
-      prisma.accessLog.count({
-        where: effectiveCityId ? { result: 'GRANTED', lock: { address: { cityId: effectiveCityId } } } : { result: 'GRANTED' },
+        where: accessLogStrictScopeWhere(req) ? { result: 'GRANTED', ...(accessLogStrictScopeWhere(req) as object) } : { result: 'GRANTED' },
       }),
       prisma.accessLog.findMany({
-        where: effectiveCityId ? { lock: { address: { cityId: effectiveCityId } } } : undefined,
+        where: accessLogStrictScopeWhere(req) || undefined,
         orderBy: { timestamp: 'desc' },
         take: 10,
         include: {
@@ -65,7 +59,7 @@ class DashboardController {
       where: {
         result: 'GRANTED',
         timestamp: { gte: fifteenMinAgo },
-        ...(effectiveCityId ? { lock: { address: { cityId: effectiveCityId } } } : {}),
+        ...(accessLogStrictScopeWhere(req) || {}),
       },
       select: { userId: true },
       distinct: ['userId'],
@@ -74,7 +68,8 @@ class DashboardController {
       where: {
         isActive: true,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        ...(effectiveCityId ? { user: { cityId: effectiveCityId } } : {}),
+        // Enforce tenant isolation for ALL users
+        ...(user?.projectCityId ? { projectCityId: user.projectCityId } : {}),
       },
       select: { userId: true },
       distinct: ['userId'],
@@ -93,7 +88,7 @@ class DashboardController {
       cityId: string
       locks: Array<{ id: string; isOnline: boolean; isActive: boolean }>
     }> = await prisma.address.findMany({
-      where: effectiveCityId ? { cityId: effectiveCityId } : undefined,
+      where: addressWhere || undefined,
       select: {
         id: true,
         street: true,
@@ -114,13 +109,13 @@ class DashboardController {
     const attemptsByLock = await prisma.accessLog.groupBy({
       by: ['lockId'],
       _count: { _all: true },
-      where: effectiveCityId ? { lock: { address: { cityId: effectiveCityId } } } : undefined,
+      where: accessLogStrictScopeWhere(req) || undefined,
     })
     const successByLock = await prisma.accessLog.groupBy({
       by: ['lockId'],
       _count: { _all: true },
       where: {
-        ...(effectiveCityId ? { lock: { address: { cityId: effectiveCityId } } } : {}),
+        ...(accessLogStrictScopeWhere(req) || {}),
         result: 'GRANTED',
       },
     })
@@ -142,7 +137,7 @@ class DashboardController {
       where: {
         result: 'GRANTED',
         timestamp: { gte: fifteenMinAgo },
-        ...(effectiveCityId ? { lock: { address: { cityId: effectiveCityId } } } : {}),
+        ...(accessLogStrictScopeWhere(req) || {}),
       },
       select: { userId: true, lock: { select: { addressId: true } } },
     })
@@ -155,13 +150,14 @@ class DashboardController {
       recentUsersMap.get(addrId)!.add(uid)
     }
 
-    // Active keys per address: users with an active key AND a current permission to any lock at that address
+    // Active keys per address: unique users with an active key AND a current permission to any lock at that address
     const permsWithActiveKeys = await prisma.userPermission.findMany({
       where: {
         canAccess: true,
-        ...(effectiveCityId ? { lock: { address: { cityId: effectiveCityId } } } : {}),
+        // Enforce tenant isolation for ALL users
+        ...(user?.projectCityId ? { user: { projectCityId: user.projectCityId } } : {}),
         AND: [
-          { OR: [{ validTo: null }, { validTo: { gt: now } }] },
+          { validTo: { gt: now } }, // All permissions now have expiration dates
           { validFrom: { lte: now } },
         ],
         user: {
@@ -176,7 +172,7 @@ class DashboardController {
       const uid = row.userId
       if (!addrId || !uid) continue
       if (!activeKeysMap.has(addrId)) activeKeysMap.set(addrId, new Set<string>())
-      activeKeysMap.get(addrId)!.add(uid)
+      activeKeysMap.get(addrId)!.add(uid) // Set ensures uniqueness per address
     }
 
     const locations = addresses.map((a: { id: string; street: string; number: string; zipCode: string; cityId: string; locks: Array<{ id: string; isOnline: boolean; isActive: boolean }> }) => {
@@ -213,7 +209,7 @@ class DashboardController {
         successfulAccess,
         recentAccessLogs,
         locations,
-        scope: effectiveCityId ? { cityId: effectiveCityId } : { cityId: null },
+        scope: user?.projectCityId ? { projectCityId: user.projectCityId } : null,
       },
     })
   }

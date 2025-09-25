@@ -156,7 +156,7 @@ class UserService {
     const sortField = (typeof query.sortBy === 'string' && allowedSortFields.has(query.sortBy)) ? query.sortBy : 'createdAt'
     const sortDir: 'asc' | 'desc' = (typeof query.sortOrder === 'string' && allowedSortOrders.has(query.sortOrder)) ? (query.sortOrder as 'asc' | 'desc') : 'desc'
 
-  const { role, search, cityId } = query
+  const { role, search, projectCityId } = query
     let isActiveParsed: boolean | undefined
     const rawIsActive = (query as any).isActive as unknown
     if (typeof rawIsActive === 'boolean') {
@@ -187,8 +187,8 @@ class UserService {
       ]
     }
 
-    if (cityId) {
-      where.cityId = cityId
+    if (projectCityId) {
+      where.projectCityId = projectCityId
     }
 
     const [users, total] = await Promise.all([
@@ -207,14 +207,48 @@ class UserService {
           isActive: true,
           createdAt: true,
           updatedAt: true,
-          lastLoginAt: true
+          lastLoginAt: true,
+          projectCityId: true,
+          rfidKeys: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              cardId: true,
+              name: true,
+              isActive: true,
+              issuedAt: true,
+              expiresAt: true
+            }
+          }
         }
       }),
       prisma.user.count({ where })
     ])
 
+    // Manually add permissions count with proper tenant isolation
+    const usersWithCounts = await Promise.all(
+      users.map(async (user: any) => {
+        const permissionsCount = await prisma.userPermission.count({
+          where: {
+            userId: user.id,
+            canAccess: true,
+            lock: {
+              projectCityId: user.projectCityId || undefined
+            }
+          }
+        })
+
+        return {
+          ...user,
+          _count: {
+            permissions: permissionsCount
+          }
+        }
+      })
+    )
+
     return {
-      data: users as User[],
+      data: usersWithCounts as User[],
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -226,19 +260,16 @@ class UserService {
     }
   }
 
-  async getUsersWithPermissions(cityId?: string): Promise<Array<User & { permissionCount: number }>> {
+  async getUsersWithPermissions(projectCityId?: string): Promise<Array<User & { permissionCount: number }>> {
     const whereUser: any = { isActive: true }
-    if (cityId) whereUser.cityId = cityId
+    if (projectCityId) whereUser.projectCityId = projectCityId
     const users = await prisma.user.findMany({
       where: whereUser,
       include: {
         permissions: {
           where: {
             canAccess: true,
-            OR: [
-              { validTo: null },
-              { validTo: { gte: new Date() } }
-            ]
+            validTo: { gte: new Date() } // All permissions now have expiration dates
           }
         }
       },
@@ -254,7 +285,7 @@ class UserService {
     })
   }
 
-  async getUserStats(userId: string, cityId?: string): Promise<{
+  async getUserStats(userId: string, projectCityId?: string): Promise<{
     totalAccessAttempts: number
     successfulAccess: number
     failedAccess: number
@@ -263,18 +294,15 @@ class UserService {
   }> {
   const [accessLogs, permissions] = await Promise.all([
       prisma.accessLog.findMany({
-        where: { userId, ...(cityId ? { lock: { address: { cityId } } } : {}) },
+        where: { userId, ...(projectCityId ? { lock: { projectCityId } } : {}) },
         orderBy: { timestamp: 'desc' }
       }),
       prisma.userPermission.count({
         where: {
           userId,
           canAccess: true,
-          OR: [
-            { validTo: null },
-            { validTo: { gte: new Date() } }
-          ],
-          ...(cityId ? { lock: { address: { cityId } } } : {})
+          validTo: { gte: new Date() }, // All permissions now have expiration dates
+          ...(projectCityId ? { lock: { projectCityId } } : {})
         }
       })
     ])

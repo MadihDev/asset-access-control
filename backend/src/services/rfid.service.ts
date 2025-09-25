@@ -2,13 +2,27 @@ import prisma from '../lib/prisma'
 import { CreateRFIDKeyRequest, RFIDKey } from '../types'
 
 class RFIDService {
-  async list(userId?: string, cityId?: string): Promise<RFIDKey[]> {
+  async list(userId?: string, projectCityId?: string): Promise<RFIDKey[]> {
     const where: any = {}
     if (userId) where.userId = userId
-    if (cityId) {
-      where.user = { cityId }
+    if (projectCityId) {
+      // Direct projectCityId filtering - much more efficient than user joins
+      where.projectCityId = projectCityId
     }
-    const keys = await prisma.rFIDKey.findMany({ where, include: { user: true }, orderBy: { issuedAt: 'desc' } })
+    const keys = await prisma.rFIDKey.findMany({ 
+      where, 
+      include: { 
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }, 
+      orderBy: { issuedAt: 'desc' } 
+    })
     return keys as RFIDKey[]
   }
 
@@ -18,7 +32,37 @@ class RFIDService {
     if (existing) {
       throw new Error('RFID card ID already exists')
     }
-    const created = await prisma.rFIDKey.create({ data: { cardId, name, userId, expiresAt } })
+    
+    // Get user's projectCityId for proper tenant scoping
+    const user = await prisma.user.findUnique({ 
+      where: { id: userId }, 
+      select: { projectCityId: true } 
+    })
+    if (!user) {
+      throw new Error('User not found')
+    }
+    
+    // ENFORCE ONE CARD PER USER: Check if user already has an active card
+    const existingActiveCard = await prisma.rFIDKey.findFirst({
+      where: {
+        userId,
+        isActive: true
+      }
+    })
+    
+    if (existingActiveCard) {
+      throw new Error(`User already has an active RFID card (${existingActiveCard.cardId}). Please revoke the existing card first or use the assign endpoint to replace it.`)
+    }
+    
+    const created = await prisma.rFIDKey.create({ 
+      data: { 
+        cardId, 
+        name, 
+        userId, 
+        expiresAt,
+        projectCityId: user.projectCityId 
+      } 
+    })
     return created as RFIDKey
   }
 

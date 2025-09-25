@@ -38,9 +38,16 @@ export const validateLogin = [
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
-  body('cityId')
+  body('projectId')
     .notEmpty()
-    .withMessage('City is required'),
+    .withMessage('Project is required'),
+  body('cityName')
+    .notEmpty()
+    .withMessage('City name is required'),
+  body('cityId')
+    .optional()
+    .notEmpty()
+    .withMessage('City ID cannot be empty if provided'),
   handleValidationErrors
 ]
 
@@ -452,5 +459,133 @@ export const validateAuditQuery = [
     }
     return next()
   },
+  handleValidationErrors
+]
+
+// ---------------- Location (bulk) validation ----------------
+
+export const validateAddressIdParam = [
+  param('addressId')
+    .custom((v) => isId(v))
+    .withMessage('Invalid addressId'),
+  handleValidationErrors,
+]
+
+export const validateBulkLocationPermissions = [
+  body('grants')
+    .optional({ values: 'falsy' })
+    .isArray({ max: 1000 })
+    .withMessage('grants must be an array (max 1000 items)'),
+  body('revokes')
+    .optional({ values: 'falsy' })
+    .isArray({ max: 1000 })
+    .withMessage('revokes must be an array (max 1000 items)'),
+
+  // Validate grants entries when present
+  body('grants.*.userId')
+    .optional({ values: 'falsy' })
+    .isString()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('grants[*].userId must be a non-empty string up to 100 chars'),
+  body('grants.*.lockId')
+    .optional({ values: 'falsy' })
+    .isString()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('grants[*].lockId must be a non-empty string up to 100 chars'),
+  body('grants.*.validFrom')
+    .optional({ values: 'falsy' })
+    .isISO8601()
+    .withMessage('grants[*].validFrom must be ISO 8601'),
+  body('grants.*.validTo')
+    .optional({ values: 'falsy' })
+    .isISO8601()
+    .withMessage('grants[*].validTo must be ISO 8601'),
+
+  // Validate revoke entries when present
+  body('revokes.*.userId')
+    .optional({ values: 'falsy' })
+    .isString()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('revokes[*].userId must be a non-empty string up to 100 chars'),
+  body('revokes.*.lockId')
+    .optional({ values: 'falsy' })
+    .isString()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('revokes[*].lockId must be a non-empty string up to 100 chars'),
+
+  // Custom: require at least one of grants or revokes and ensure validFrom <= validTo
+  (req: Request, res: Response, next: NextFunction) => {
+    const { grants, revokes } = (req.body || {}) as {
+      grants?: Array<{ userId?: string; lockId?: string; validFrom?: string; validTo?: string }>
+      revokes?: Array<{ userId?: string; lockId?: string }>
+    }
+    const hasGrants = Array.isArray(grants) && grants.length > 0
+    const hasRevokes = Array.isArray(revokes) && revokes.length > 0
+    if (!hasGrants && !hasRevokes) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: [{ field: 'grants|revokes', message: 'Provide at least one grant or revoke item' }] })
+    }
+    if (hasGrants) {
+      for (const g of grants!) {
+        if (!g?.userId || !g?.lockId) {
+          return res.status(400).json({ success: false, error: 'Validation failed', details: [{ field: 'grants[*]', message: 'Each grant requires userId and lockId' }] })
+        }
+        if (g.validFrom && g.validTo) {
+          const from = new Date(g.validFrom)
+          const to = new Date(g.validTo)
+          if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && from.getTime() > to.getTime()) {
+            return res.status(400).json({ success: false, error: 'Validation failed', details: [{ field: 'grants[*].validFrom|validTo', message: 'validFrom cannot be after validTo' }] })
+          }
+        }
+      }
+    }
+    return next()
+  },
+  handleValidationErrors,
+]
+
+export const validateBulkLocationKeyAssign = [
+  body('items')
+    .isArray({ min: 1, max: 1000 })
+    .withMessage('items must be an array with at least one entry (max 1000 items)'),
+  body('items.*.cardId')
+    .isLength({ min: 1, max: 100 })
+    .withMessage('items[*].cardId is required (max 100 chars)')
+    .trim(),
+  body('items.*.userId')
+    .custom((v) => isId(v))
+    .withMessage('items[*].userId must be a valid ID'),
+  body('items.*.name')
+    .optional({ values: 'falsy' })
+    .isLength({ max: 200 })
+    .withMessage('items[*].name must be <= 200 chars')
+    .trim(),
+  body('items.*.expiresAt')
+    .optional({ values: 'falsy' })
+    .isISO8601()
+    .withMessage('items[*].expiresAt must be ISO 8601'),
+  body('items.*.isActive')
+    .optional({ values: 'falsy' })
+    .isBoolean()
+    .withMessage('items[*].isActive must be a boolean'),
+  handleValidationErrors,
+]
+
+// Two-Factor Authentication validation rules
+export const validate2FAVerify = [
+  body('challengeId')
+    .custom((v) => isId(v))
+    .withMessage('challengeId must be a valid ID'),
+  body('code')
+    .isNumeric()
+    .withMessage('code must be numeric')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('code must be exactly 6 digits'),
+  handleValidationErrors
+]
+
+export const validate2FAResend = [
+  body('challengeId')
+    .custom((v) => isId(v))
+    .withMessage('challengeId must be a valid ID'),
   handleValidationErrors
 ]

@@ -1,12 +1,12 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { AuditAction } from '../types'
-import { getEffectiveCityId } from '../lib/scope'
 
 class AuditController {
   async list(req: Request, res: Response) {
     try {
       const { page = 1, limit = 50, action, userId, entityType, startDate, endDate, sortBy = 'timestamp', sortOrder = 'desc' } = req.query as any
+      const user = (req as any).user
 
       const pageNum = Math.max(1, parseInt(String(page), 10) || 1)
       const limitNum = Math.min(1000, Math.max(1, parseInt(String(limit), 10) || 50))
@@ -21,14 +21,30 @@ class AuditController {
         if (startDate) where.timestamp.gte = new Date(String(startDate))
         if (endDate) where.timestamp.lte = new Date(String(endDate))
       }
-      const effectiveCityId = getEffectiveCityId(req)
-      if (effectiveCityId) {
-        // Scope audits by related user city when available
-        where.user = { cityId: effectiveCityId }
+
+      // Enforce tenant isolation: only show audit logs from users in the same project
+      // Since AuditLog doesn't have projectCityId, we filter through user.projectCityId
+      where.user = {
+        projectCityId: user.projectCityId
       }
 
       const [items, total] = await Promise.all([
-        prisma.auditLog.findMany({ where, skip, take: limitNum, orderBy: { [String(sortBy)]: (String(sortOrder) === 'asc' ? 'asc' : 'desc') } }),
+        prisma.auditLog.findMany({ 
+          where, 
+          skip, 
+          take: limitNum, 
+          orderBy: { [String(sortBy)]: (String(sortOrder) === 'asc' ? 'asc' : 'desc') },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                projectCityId: true
+              }
+            }
+          }
+        }),
         prisma.auditLog.count({ where })
       ])
 

@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma'
 import AuditService from '../services/audit.service'
 import { AuditAction } from '../types'
-import { emitToCity } from '../lib/ws'
+import { emitToProjectCity } from '../lib/ws'
 
 let timer: NodeJS.Timeout | null = null
 
@@ -38,24 +38,24 @@ export async function runKeyExpiryCheckOnce(): Promise<{ deactivatedCount: numbe
     )
   )
 
-  // Emit WebSocket events grouped by city
+  // Emit WebSocket events grouped by project-city
   try {
-    const users: { id: string; cityId: string | null }[] = await prisma.user.findMany({
+    const users: { id: string; projectCityId: string | null }[] = await prisma.user.findMany({
       where: { id: { in: expiredActiveKeys.map((k) => k.userId) } },
-      select: { id: true, cityId: true }
+      select: { id: true, projectCityId: true }
     })
-    const cityByUser = new Map<string, string | null>(users.map((u: { id: string; cityId: string | null }) => [u.id, u.cityId]))
-    const affectedCities = new Set<string>()
+    const projectCityByUser = new Map<string, string | null>(users.map((u: { id: string; projectCityId: string | null }) => [u.id, u.projectCityId]))
+    const affectedProjectCities = new Set<string>()
     for (const key of expiredActiveKeys) {
-      const cityId = cityByUser.get(key.userId)
-      if (typeof cityId === 'string' && cityId.length > 0) {
-        emitToCity(cityId, 'key.expired', { keyId: key.id, cardId: key.cardId, userId: key.userId, expiredAt: key.expiresAt })
-        affectedCities.add(cityId)
+      const projectCityId = projectCityByUser.get(key.userId)
+      if (typeof projectCityId === 'string' && projectCityId.length > 0) {
+        emitToProjectCity(projectCityId, 'key.expired', { keyId: key.id, cardId: key.cardId, userId: key.userId, expiredAt: key.expiresAt })
+        affectedProjectCities.add(projectCityId)
       }
     }
-    // Ask dashboards in affected cities to refresh KPIs
-    for (const cityId of affectedCities) {
-      emitToCity(cityId, 'kpi:update', { reason: 'key.expired' })
+    // Ask dashboards in affected project-cities to refresh KPIs
+    for (const projectCityId of affectedProjectCities) {
+      emitToProjectCity(projectCityId, 'kpi:update', { reason: 'key.expired' })
     }
   } catch (_err) {
     // best-effort; ignore

@@ -1,9 +1,6 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react' 
-import { Link } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
-import type { AxiosError } from 'axios'
-import { useToast } from '../hooks/useToast'
-import { useCity } from '../contexts/CityContext'
+import { useTenantScope } from '../hooks/useTenantScope'
 
 interface User {
   id: string
@@ -19,25 +16,12 @@ interface DashboardProps {
 
 interface Stats {
   totalUsers: number
-  activeUsers?: number
+  activeUsers: number
   totalLocks: number
-  totalAccessAttempts: number
-  successfulAccess: number
   onlineLocks: number
-  activeKeys?: number
+  activeKeys: number
+  totalAccessAttempts: number
   recentAccessLogs: AccessLog[]
-  locations?: Array<{
-    addressId: string
-    name: string
-    cityId: string
-    totalLocks: number
-    activeLocks: number
-    activeUsers: number
-    activeKeys: number
-    totalAttempts?: number
-    successfulAttempts?: number
-    successRate?: number
-  }>
 }
 
 interface AccessLog {
@@ -57,374 +41,391 @@ interface AccessLog {
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
+    activeUsers: 0,
     totalLocks: 0,
-    totalAccessAttempts: 0,
-    successfulAccess: 0,
     onlineLocks: 0,
+    activeKeys: 0,
+    totalAccessAttempts: 0,
     recentAccessLogs: []
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { success: toastSuccess, error: toastError } = useToast()
-  const { selectedCityId } = useCity()
-  const [sortBy, setSortBy] = useState<'name' | 'activeUsers' | 'successRate'>('name')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [simulatingAccess, setSimulatingAccess] = useState(false)
+  const { tenantParams } = useTenantScope()
 
-  // Sort locations memoized at top-level to respect React hooks rules
-  const sortedLocations = useMemo(() => {
-    const arr = [...(stats.locations || [])]
-    arr.sort((a, b) => {
-      let av: number | string = a.name
-      let bv: number | string = b.name
-      if (sortBy === 'activeUsers') { av = a.activeUsers; bv = b.activeUsers }
-      if (sortBy === 'successRate') { av = a.successRate || 0; bv = b.successRate || 0 }
-      if (typeof av === 'string' && typeof bv === 'string') {
-        const cmp = av.localeCompare(bv)
-        return sortOrder === 'asc' ? cmp : -cmp
-      }
-      const na = Number(av) || 0; const nb = Number(bv) || 0
-      return sortOrder === 'asc' ? na - nb : nb - na
-    })
-    return arr
-  }, [stats.locations, sortBy, sortOrder])
-
-  // Track latest request to avoid stale responses overriding state
-  const latestReqIdRef = useRef(0)
   const fetchStats = useCallback(async () => {
-    const reqId = ++latestReqIdRef.current
     try {
       setLoading(true)
       setError(null)
-      // Append selected city if present
-      const cityId = selectedCityId || undefined
-      const { data } = await api.get('/api/dashboard', { params: cityId ? { cityId } : {} })
-      if (reqId === latestReqIdRef.current) {
-        setStats(data.data as Stats)
-      }
+      const { data } = await api.get('/api/dashboard', { params: tenantParams })
+      setStats(data.data as Stats)
     } catch (err) {
-      if (reqId !== latestReqIdRef.current) return // ignore stale errors
-      const axiosErr = err as AxiosError<{ error?: string }>
-      const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5001'
-      const message = axiosErr?.response?.data?.error 
-        || (axiosErr?.response?.status === 401 ? 'Session expired or unauthorized. Please log in again.' 
-        : !axiosErr?.response ? `Cannot reach API at ${baseUrl}` : 'Failed to load dashboard')
-      setError(message)
+      console.error('Error fetching dashboard stats:', err)
+      setError('Failed to load dashboard data')
     } finally {
-      if (reqId === latestReqIdRef.current) setLoading(false)
+      setLoading(false)
     }
-  }, [selectedCityId])
+  }, [tenantParams])
 
-  useEffect(() => {
-    let mounted = true
-    fetchStats()
-    const onRefresh = () => { if (mounted) fetchStats() }
-    window.addEventListener('dashboard:refresh', onRefresh)
-    return () => {
-      mounted = false
-      window.removeEventListener('dashboard:refresh', onRefresh)
-    }
-  }, [fetchStats])
-
-  const getStatusBadge = (result: string) => {
-    switch (result) {
-      case 'GRANTED':
-        return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Granted</span>
-      case 'DENIED_NO_PERMISSION':
-        return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Denied</span>
-      default:
-        return <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{result}</span>
+  const simulateAccessAttempt = async () => {
+    try {
+      setSimulatingAccess(true)
+      setError(null)
+      
+      // Simulate a random access attempt
+      const accessTypes = ['RFID_CARD', 'PIN_CODE']
+      const results = ['GRANTED', 'DENIED_NO_PERMISSION', 'DENIED_INVALID_CARD']
+      
+      const randomAccessType = accessTypes[Math.floor(Math.random() * accessTypes.length)]
+      const randomResult = results[Math.floor(Math.random() * results.length)]
+      
+      // Create a test access log
+      await api.post('/api/lock/access-logs/simulate', {
+        accessType: randomAccessType,
+        result: randomResult
+      })
+      
+      // Refresh the dashboard to show the new access log
+      await fetchStats()
+    } catch (err) {
+      console.error('Error simulating access attempt:', err)
+      setError('Failed to simulate access attempt')
+    } finally {
+      setSimulatingAccess(false)
     }
   }
 
+  useEffect(() => {
+    fetchStats()
+  }, [tenantParams, fetchStats])
+
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString()
+    return new Date(timestamp).toLocaleString()
+  }
+
+  const getStatusColor = (result: string) => {
+    switch (result) {
+      case 'GRANTED':
+        return 'text-green-600'
+      case 'DENIED_NO_PERMISSION':
+      case 'DENIED_INVALID_CARD':
+        return 'text-red-600'
+      default:
+        return 'text-gray-600'
+    }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex items-center justify-center py-12">
+          <svg className="h-6 w-6 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span className="ml-2 text-gray-600">Loading dashboard...</span>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Dashboard</h3>
-        <div className="text-red-600">{error}</div>
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="text-center py-12">
+          <div className="text-red-600 text-sm font-medium">{error}</div>
+          <button
+            onClick={fetchStats}
+            className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     )
-  }
-
-  const simulateAccess = async () => {
-    try {
-      // Ensure we have a valid-looking lockId (required by backend validation)
-      let lockId = localStorage.getItem('lastLockId')
-      const cityId = selectedCityId || undefined
-      if (!lockId) {
-        const { data } = await api.get('/api/lock', { params: cityId ? { cityId } : {} })
-        const locks: Array<{ id: string; name: string }> = Array.isArray(data?.data) ? data.data : []
-        if (!locks.length) {
-          toastError?.('No locks available in your scope to simulate an access.', 'Simulation error')
-          return
-        }
-        lockId = locks[0].id
-        localStorage.setItem('lastLockId', lockId)
-      }
-
-      const cardId = localStorage.getItem('lastCardId') || 'CARD-DEMO'
-
-      const body = {
-        cardId,
-        lockId,
-        accessType: 'RFID_CARD',
-        deviceInfo: { deviceModel: 'Dev-Client', firmwareVersion: 'dev', signalStrength: 100 }
-      }
-      await api.post('/api/lock/access-attempt', body)
-      toastSuccess?.('Access attempt simulated', 'Simulation')
-      // On success or fail, the server emits events; we’ll just refresh too
-      fetchStats()
-    } catch {
-      toastError?.('Failed to simulate access attempt', 'Simulation error')
-    }
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-gray-600">
-          Welcome back, {user.firstName} {user.lastName}
-        </p>
-        {import.meta.env.DEV && (
-          <div className="mt-4">
-            <button onClick={simulateAccess} className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700">
-              Simulate access attempt (dev)
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Welcome, {user.firstName} {user.lastName} - RFID Access Control System Overview
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Simulate Access Button */}
+            <button
+              onClick={simulateAccessAttempt}
+              disabled={simulatingAccess}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+            >
+              <svg className={`h-4 w-4 ${simulatingAccess ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V9a4 4 0 10-8 0v2m12 0a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h12z" />
+              </svg>
+              {simulatingAccess ? 'Simulating...' : 'Test Access'}
+            </button>
+            
+            {/* Refresh Button */}
+            <button
+              onClick={fetchStats}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+            >
+              <svg className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
             </button>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Total Users */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Total Users</h3>
+              <p className="text-3xl font-bold text-blue-600">{stats.totalUsers}</p>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Users</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalUsers}</p>
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+              </svg>
             </div>
           </div>
         </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-              </div>
+        
+        {/* Total Locks */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Total Locks</h3>
+              <p className="text-3xl font-bold text-green-600">{stats.totalLocks}</p>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Locks</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalLocks}</p>
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V9a4 4 0 10-8 0v2m12 0a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h12z" />
+              </svg>
             </div>
           </div>
         </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </div>
+        
+        {/* Access Attempts */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Access Attempts</h3>
+              <p className="text-3xl font-bold text-purple-600">{stats.totalAccessAttempts}</p>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Access Attempts</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalAccessAttempts}</p>
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              </svg>
             </div>
           </div>
         </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
+        
+        {/* Online Locks */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Online Locks</h3>
+              <p className="text-3xl font-bold text-orange-600">{stats.onlineLocks}</p>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Online Locks</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.onlineLocks}</p>
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+              </svg>
             </div>
           </div>
         </div>
-        {typeof stats.activeUsers === 'number' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path fillRule="evenodd" d="M2 13.5A4.5 4.5 0 016.5 9h7A4.5 4.5 0 0118 13.5V15a1 1 0 01-1 1H3a1 1 0 01-1-1v-1.5z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Users</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.activeUsers}</p>
-              </div>
+        
+        {/* Active Users */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
+              <p className="text-3xl font-bold text-indigo-600">{stats.activeUsers}</p>
+            </div>
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
             </div>
           </div>
-        )}
-        {typeof stats.activeKeys === 'number' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-teal-500 rounded-md flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M18 8a6 6 0 11-11.473 2.66l-3.39 3.39a1 1 0 01-1.414-1.415l3.39-3.39A6 6 0 0118 8z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Keys</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.activeKeys}</p>
-              </div>
+        </div>
+        
+        {/* Active Keys */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Active Keys</h3>
+              <p className="text-3xl font-bold text-teal-600">{stats.activeKeys}</p>
+            </div>
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Recent Access Logs */}
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Access Logs</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Lock
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {stats.recentAccessLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatTime(log.timestamp)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.user?.firstName || 'Unknown'} {log.user?.lastName || ''}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.lock.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(log.result)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {log.accessType}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Recent Access Logs</h2>
+            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
           </div>
         </div>
-      </div>
-
-      {/* Locations KPIs */}
-      {!!stats.locations?.length && (
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Locations</h3>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-700">Sort by</label>
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'name' | 'activeUsers' | 'successRate')} className="rounded-md border-gray-300 text-sm">
-                  <option value="name">Name</option>
-                  <option value="activeUsers">Active Users</option>
-                  <option value="successRate">Success Rate</option>
-                </select>
-                <button onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')} className="text-sm px-2 py-1 rounded-md border border-gray-300 bg-white hover:bg-gray-50">
-                  {sortOrder === 'asc' ? 'Asc' : 'Desc'}
-                </button>
+        <div className="p-6">
+          {stats.recentAccessLogs.length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 5.5l3 3L15 10" />
+              </svg>
+              <div className="text-gray-600 font-medium">No access logs found</div>
+              <div className="text-gray-500 text-sm mt-1">
+                Access attempts will appear here when users interact with locks
               </div>
             </div>
+          ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active Users</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active Keys</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Locks (online/total)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
-                    <th className="px-6 py-3"></th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Time
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      User
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Lock
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedLocations.map((loc) => (
-                    <tr key={loc.addressId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <Link
-                          to={`/location/${encodeURIComponent(loc.addressId)}${selectedCityId ? `?cityId=${encodeURIComponent(selectedCityId)}` : ''}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {loc.name}
-                        </Link>
+                  {stats.recentAccessLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div className="text-sm text-gray-900">{formatTime(log.timestamp)}</div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{loc.activeUsers}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{loc.activeKeys}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{loc.activeLocks}/{loc.totalLocks}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{typeof loc.successRate === 'number' ? `${loc.successRate.toFixed(0)}%` : '—'} ({loc.successfulAttempts || 0}/{loc.totalAttempts || 0})</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Link
-                          to={`/access-logs?addressId=${encodeURIComponent(loc.addressId)}`}
-                          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                        >
-                          View logs
-                        </Link>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          <div className="text-sm text-gray-900">
+                            {log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() : 'Unknown'}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V9a4 4 0 10-8 0v2m12 0a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h12z" />
+                          </svg>
+                          <div className="text-sm text-gray-900">{log.lock.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {log.result === 'GRANTED' ? (
+                            <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          ) : (
+                            <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2 2m-2-2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          )}
+                          <span className={`text-sm font-medium ${getStatusColor(log.result)}`}>
+                            {log.result.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a1.994 1.994 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          <div className="text-sm text-gray-500">{log.accessType.replace(/_/g, ' ')}</div>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          )}
         </div>
-      )}
-      {Array.isArray(stats.locations) && stats.locations.length === 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Locations</h3>
-          <p className="text-gray-600">No locations found for the selected scope.</p>
+      </div>
+
+      {/* Summary Stats */}
+      {(stats.totalUsers > 0 || stats.totalLocks > 0) && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">System Overview</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <svg className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">{stats.totalUsers}</div>
+              <div className="text-sm text-gray-500">Total Users</div>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div className="text-2xl font-bold text-green-600">{stats.activeUsers}</div>
+              <div className="text-sm text-gray-500">Active Users</div>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <svg className="h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                </svg>
+              </div>
+              <div className="text-2xl font-bold text-orange-600">{stats.onlineLocks}</div>
+              <div className="text-sm text-gray-500">Online Locks</div>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <svg className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+              <div className="text-2xl font-bold text-purple-600">{stats.totalAccessAttempts}</div>
+              <div className="text-sm text-gray-500">Total Access Attempts</div>
+            </div>
+          </div>
         </div>
       )}
     </div>

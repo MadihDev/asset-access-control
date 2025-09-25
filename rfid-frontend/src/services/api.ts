@@ -3,9 +3,9 @@ import axios, { AxiosHeaders, type AxiosError, type InternalAxiosRequestConfig }
 const envBaseUrl = import.meta.env.VITE_API_URL as string | undefined
 if (!envBaseUrl) {
   // Helpful hint in dev when env is missing
-  console.warn('VITE_API_URL is not set; defaulting to http://localhost:5001')
+  console.warn('VITE_API_URL is not set; defaulting to http://localhost:5000')
 }
-const baseURL = envBaseUrl || 'http://localhost:5001'
+const baseURL = envBaseUrl || 'http://localhost:5000'
 
 const api = axios.create({
   baseURL,

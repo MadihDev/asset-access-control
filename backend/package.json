@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-  "test": "jest --config jest.config.ts",
+    "test": "jest --config jest.config.ts",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
@@ -17,7 +17,8 @@
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
-    "db:backfill:accesslog-city": "ts-node scripts/backfill-accesslog-city.ts"
+    "db:backfill:accesslog-city": "ts-node scripts/backfill-accesslog-city.ts",
+    "tenant:dry-run": "ts-node scripts/tenant-dry-run-report.ts"
   },
   "keywords": [
     "rfid",
@@ -30,7 +31,6 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.2",
-    "socket.io": "^4.7.5",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
@@ -45,7 +45,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.16.3",
-    "twilio": "^5.9.0",
+    "socket.io": "^4.7.5",
     "winston": "^3.17.0"
   },
   "devDependencies": {
@@ -77,5 +77,8 @@
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
+  },
+  "optionalDependencies": {
+    "twilio": "^5.10.0"
   }
 }

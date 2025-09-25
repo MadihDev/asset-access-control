@@ -3,18 +3,69 @@ import RFIDService from '../services/rfid.service'
 import AuditService from '../services/audit.service'
 import { AuditAction, AssignRFIDKeyRequest, RevokeRFIDKeyRequest, CreateRFIDKeyRequest } from '../types'
 import prisma from '../lib/prisma'
-import { emitToCity } from '../lib/ws'
-import { getEffectiveCityId } from '../lib/scope'
+import { emitToProjectCity } from '../lib/ws'
+import { getEffectiveProjectCityId } from '../lib/scope'
 
 class RFIDController {
   async list(req: Request, res: Response) {
     try {
       const { userId } = req.query as any
-      const effectiveCityId = getEffectiveCityId(req)
-      const keys = await RFIDService.list(userId, effectiveCityId)
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+      const keys = await RFIDService.list(userId, effectiveProjectCityId)
       res.json({ success: true, data: keys })
     } catch (error) {
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to fetch RFID keys' })
+    }
+  }
+
+  async available(req: Request, res: Response) {
+    try {
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+      
+      // Get all RFID cards that are either unassigned or inactive within the tenant
+      const availableCards = await prisma.rFIDKey.findMany({
+        where: {
+          projectCityId: effectiveProjectCityId,
+          isActive: false // Only inactive cards are available for assignment
+        },
+        select: {
+          id: true,
+          cardId: true,
+          name: true,
+          isActive: true,
+          issuedAt: true,
+          expiresAt: true,
+          userId: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true
+            }
+          }
+        },
+        orderBy: { issuedAt: 'desc' }
+      })
+
+      // Format for frontend (map fields to match frontend interface)
+      const formattedCards = availableCards.map((card: any) => ({
+        id: card.id,
+        cardNumber: card.cardId, // Frontend expects cardNumber field
+        cardId: card.cardId, // Keep cardId for backward compatibility
+        name: card.name,
+        isAssigned: false, // Available cards are not assigned
+        isActive: card.isActive,
+        issuedAt: card.issuedAt,
+        expiresAt: card.expiresAt,
+        userId: card.userId,
+        assignedUserId: card.userId, // Frontend expects assignedUserId
+        user: card.user
+      }))
+
+      res.json({ success: true, data: formattedCards })
+    } catch (error) {
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to fetch available RFID cards' })
     }
   }
 
@@ -22,9 +73,9 @@ class RFIDController {
     try {
       const payload: CreateRFIDKeyRequest = req.body
       const actor = (req as any).user
-      if (actor?.role !== 'SUPER_ADMIN') {
-        const targetUser = await prisma.user.findUnique({ where: { id: payload.userId }, select: { cityId: true } })
-        if (!targetUser || (actor?.cityId && targetUser.cityId && targetUser.cityId !== actor.cityId)) {
+      if (actor?.role !== 'ADMIN') {
+        const targetUser = await prisma.user.findUnique({ where: { id: payload.userId }, select: { projectCityId: true } })
+        if (!targetUser || (actor?.projectCityId && targetUser.projectCityId && targetUser.projectCityId !== actor.projectCityId)) {
           return res.status(403).json({ success: false, error: 'Insufficient scope to create key for this user' })
         }
       }
@@ -40,9 +91,9 @@ class RFIDController {
     try {
       const { id } = req.params
       const actor = (req as any).user
-      if (actor?.role !== 'SUPER_ADMIN') {
-        const existing = await prisma.rFIDKey.findUnique({ where: { id }, include: { user: { select: { cityId: true } } } })
-        if (!existing || (actor?.cityId && existing.user?.cityId && existing.user.cityId !== actor.cityId)) {
+      if (actor?.role !== 'ADMIN') {
+        const existing = await prisma.rFIDKey.findUnique({ where: { id }, include: { user: { select: { projectCityId: true } } } })
+        if (!existing || (actor?.projectCityId && existing.user?.projectCityId && existing.user.projectCityId !== actor.projectCityId)) {
           return res.status(403).json({ success: false, error: 'Insufficient scope to update this key' })
         }
       }
@@ -65,35 +116,116 @@ class RFIDController {
 
       // Enforce city scope for non-super-admins: user must be in actor's city
       const actor = (req as any).user
-      if (actor?.role !== 'SUPER_ADMIN') {
-        const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { cityId: true } })
-        if (!targetUser || (actor?.cityId && targetUser.cityId && targetUser.cityId !== actor.cityId)) {
+      if (actor?.role !== 'ADMIN') {
+        const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { projectCityId: true } })
+        if (!targetUser || (actor?.projectCityId && targetUser.projectCityId && targetUser.projectCityId !== actor.projectCityId)) {
           return res.status(403).json({ success: false, error: 'Insufficient scope to assign key to this user' })
         }
       }
 
-      // Upsert pattern: if key exists, update owner/expiry/name; else create
-      const existing = await prisma.rFIDKey.findUnique({ where: { cardId } })
+      // Get user's projectCityId for proper tenant scoping
+      const targetUser = await prisma.user.findUnique({ 
+        where: { id: userId }, 
+        select: { projectCityId: true } 
+      })
+      if (!targetUser) {
+        return res.status(404).json({ success: false, error: 'User not found' })
+      }
+
+      // ENFORCE ONE CARD PER USER: Revoke any existing active cards for this user
+      const existingActiveCards = await prisma.rFIDKey.findMany({
+        where: {
+          userId,
+          isActive: true
+        }
+      })
+
+      if (existingActiveCards.length > 0) {
+        // Revoke all existing active cards for this user
+        await prisma.rFIDKey.updateMany({
+          where: {
+            userId,
+            isActive: true
+          },
+          data: {
+            isActive: false,
+            updatedAt: new Date()
+          }
+        })
+
+        // Log the revocation of existing cards
+        for (const existingCard of existingActiveCards) {
+          await AuditService.log({ 
+            req, 
+            action: AuditAction.UPDATE, 
+            entityType: 'RFIDKey', 
+            entityId: existingCard.id, 
+            newValues: { isActive: false, reason: 'Auto-revoked for new card assignment' } 
+          })
+
+          // Emit revocation event
+          try {
+            if (targetUser.projectCityId) {
+              emitToProjectCity(targetUser.projectCityId, 'key.revoked', { 
+                keyId: existingCard.id, 
+                cardId: existingCard.cardId, 
+                userId: existingCard.userId, 
+                revokedAt: new Date().toISOString(),
+                reason: 'auto-revoked-for-new-assignment'
+              })
+            }
+          } catch {
+            // ignore websocket errors
+          }
+        }
+      }
+
+      // Now assign the new card (either update existing or create new)
+      const existingCard = await prisma.rFIDKey.findUnique({ where: { cardId } })
       let key
-      if (existing) {
-        key = await prisma.rFIDKey.update({ where: { id: existing.id }, data: { userId, name, isActive: true, expiresAt } })
+      
+      if (existingCard) {
+        // Update existing card (even if it was inactive)
+        key = await prisma.rFIDKey.update({ 
+          where: { id: existingCard.id }, 
+          data: { 
+            userId, 
+            name, 
+            isActive: true, 
+            expiresAt,
+            projectCityId: targetUser.projectCityId 
+          } 
+        })
       } else {
-        key = await prisma.rFIDKey.create({ data: { cardId, userId, name, expiresAt, isActive: true } })
+        // Create new card
+        key = await prisma.rFIDKey.create({ 
+          data: { 
+            cardId, 
+            userId, 
+            name, 
+            expiresAt, 
+            isActive: true,
+            projectCityId: targetUser.projectCityId 
+          } 
+        })
       }
 
       await AuditService.log({ req, action: AuditAction.UPDATE, entityType: 'RFIDKey', entityId: key.id, newValues: { assignedTo: userId, expiresAt } })
 
-      // Emit WebSocket event to user's city room (best-effort)
+      // Emit assignment event
       try {
-        const city = await prisma.user.findUnique({ where: { id: userId }, select: { cityId: true } })
-        if (city?.cityId) {
-          emitToCity(city.cityId, 'key.assigned', { keyId: key.id, cardId: key.cardId, userId: key.userId, expiresAt: key.expiresAt })
+        if (targetUser.projectCityId) {
+          emitToProjectCity(targetUser.projectCityId, 'key.assigned', { keyId: key.id, cardId: key.cardId, userId: key.userId, expiresAt: key.expiresAt })
         }
       } catch {
-        // ignore
+        // ignore websocket errors
       }
 
-      res.status(200).json({ success: true, data: key, message: 'RFID key assigned' })
+      const message = existingActiveCards.length > 0 
+        ? `RFID key assigned (${existingActiveCards.length} previous cards revoked)`
+        : 'RFID key assigned'
+
+      res.status(200).json({ success: true, data: key, message })
     } catch (error) {
       res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Failed to assign RFID key' })
     }
@@ -107,15 +239,15 @@ class RFIDController {
         return res.status(400).json({ success: false, error: 'id or cardId is required' })
       }
 
-      const key = await prisma.rFIDKey.findFirst({ where: id ? { id } : { cardId }, include: { user: { select: { cityId: true } } } })
+      const key = await prisma.rFIDKey.findFirst({ where: id ? { id } : { cardId }, include: { user: { select: { projectCityId: true } } } })
       if (!key) {
         return res.status(404).json({ success: false, error: 'RFID key not found' })
       }
 
-      // Enforce city scope for non-super-admins
+      // Enforce project city scope for non-admins
       const actor = (req as any).user
-      if (actor?.role !== 'SUPER_ADMIN') {
-        if (actor?.cityId && key.user?.cityId && key.user.cityId !== actor.cityId) {
+      if (actor?.role !== 'ADMIN') {
+        if (actor?.projectCityId && key.user?.projectCityId && key.user.projectCityId !== actor.projectCityId) {
           return res.status(403).json({ success: false, error: 'Insufficient scope to revoke this key' })
         }
       }
@@ -123,11 +255,11 @@ class RFIDController {
       const updated = await prisma.rFIDKey.update({ where: { id: key.id }, data: { isActive: false } })
       await AuditService.log({ req, action: AuditAction.UPDATE, entityType: 'RFIDKey', entityId: key.id, newValues: { isActive: false } })
 
-      // Emit WebSocket event to user's city room (best-effort)
+      // Emit WebSocket event to user's project city room (best-effort)
       try {
-        const cityId = key.user?.cityId
-        if (cityId) {
-          emitToCity(cityId, 'key.revoked', { keyId: key.id, cardId: key.cardId, userId: key.userId, revokedAt: new Date().toISOString() })
+        const projectCityId = key.user?.projectCityId
+        if (projectCityId) {
+          emitToProjectCity(projectCityId, 'key.revoked', { keyId: key.id, cardId: key.cardId, userId: key.userId, revokedAt: new Date().toISOString() })
         }
       } catch {
         // ignore

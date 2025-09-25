@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import prisma from '../lib/prisma'
 import { authenticateToken, requireAdmin } from '../middleware/auth.middleware'
-import { emitToCity } from '../lib/ws'
+import { emitToProjectCity } from '../lib/ws'
 import { AccessResult, AccessType } from '../types'
 
 const router = Router()
@@ -27,10 +27,10 @@ router.post('/access', async (req, res) => {
 
     const lock = await prisma.lock.findUnique({
       where: { id: lockId },
-      select: { id: true, address: { select: { cityId: true } } },
+      select: { id: true, projectCityId: true },
     })
     if (!lock) return res.status(404).json({ success: false, error: 'Lock not found' })
-    const cityId = lock.address?.cityId
+    const projectCityId = lock.projectCityId
 
     const ts = timestamp ? new Date(timestamp) : new Date()
     if (isNaN(ts.getTime())) return res.status(400).json({ success: false, error: 'Invalid timestamp' })
@@ -43,13 +43,13 @@ router.post('/access', async (req, res) => {
         result,
         accessType: accessType ?? 'RFID_CARD',
         timestamp: ts,
-        cityId: cityId ?? null,
+        projectCityId: projectCityId ?? null,
       },
-      select: { id: true, lockId: true, userId: true, rfidKeyId: true, result: true, accessType: true, timestamp: true, cityId: true },
+      select: { id: true, lockId: true, userId: true, rfidKeyId: true, result: true, accessType: true, timestamp: true, projectCityId: true },
     })
 
-    if (cityId) {
-      emitToCity(cityId, 'access:attempt', { ...log })
+    if (projectCityId) {
+      emitToProjectCity(projectCityId, 'access:attempt', { ...log })
     }
 
     return res.status(200).json({ success: true, data: log })
@@ -68,10 +68,10 @@ router.post('/lock-status', async (req, res) => {
     const lock = await prisma.lock.update({
       where: { id: lockId },
       data: { isOnline, lastSeen: new Date() },
-      select: { id: true, isOnline: true, lastSeen: true, address: { select: { cityId: true } } },
+      select: { id: true, isOnline: true, lastSeen: true, projectCityId: true },
     })
-    const cityId = lock.address?.cityId
-    if (cityId) emitToCity(cityId, 'lock:status', { lockId: lock.id, isOnline: lock.isOnline, lastSeen: lock.lastSeen })
+    const projectCityId = lock.projectCityId
+    if (projectCityId) emitToProjectCity(projectCityId, 'lock:status', { lockId: lock.id, isOnline: lock.isOnline, lastSeen: lock.lastSeen })
     return res.status(200).json({ success: true, data: { lockId: lock.id, isOnline: lock.isOnline, lastSeen: lock.lastSeen } })
   } catch (err) {
     return res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Failed to update lock status' })

@@ -2,19 +2,66 @@ import { Request } from 'express'
 import { UserRole } from '../types'
 
 /**
- * Determines the effective city scope for a request.
- * - If a `cityId` query param is present and the user is Manager or above, use it (cross-city allowed).
- * - If the user is below Manager, fall back to their own `user.cityId`.
- * - If no authenticated user (shouldn't happen on protected routes), returns undefined.
+ * Get the effective project-city scope for a request.
+ * All users are scoped to their project-city for perfect tenant isolation.
  */
-export function getEffectiveCityId(req: Request): string | undefined {
-  const user = (req as any).user as { role: UserRole; cityId?: string } | undefined
-  const cityIdFromQuery = (req.query?.cityId as string) || undefined
-  const isSuperAdmin = !!user && user.role === UserRole.SUPER_ADMIN
+export function getEffectiveProjectCityId(req: Request): string | undefined {
+  const user = (req as any).user as { role: UserRole; projectCityId?: string } | undefined
+  return user?.projectCityId || undefined
+}
 
-  if (isSuperAdmin) {
-    return cityIdFromQuery || undefined
+/**
+ * Build a tenant-aware filter on AccessLog using project-city scoping.
+ */
+export function accessLogScopeWhere(req: Request): any | undefined {
+  const projectCityId = getEffectiveProjectCityId(req)
+  if (projectCityId) {
+    return { projectCityId }
   }
+  return undefined
+}
 
-  return user?.cityId || undefined
+/**
+ * Build a strict tenant-aware filter for AccessLog that enforces both 
+ * access log projectCityId AND lock projectCityId match the user's scope.
+ * This prevents cross-project data leakage.
+ */
+export function accessLogStrictScopeWhere(req: Request): any | undefined {
+  const projectCityId = getEffectiveProjectCityId(req)
+  if (projectCityId) {
+    return {
+      AND: [
+        { projectCityId }, // Access log must belong to user's project
+        { lock: { projectCityId } } // Lock must also belong to user's project
+      ]
+    }
+  }
+  return undefined
+}
+
+/**
+ * Build a tenant-aware filter for Address.
+ */
+export function addressScopeWhere(req: Request): any | undefined {
+  const projectCityId = getEffectiveProjectCityId(req)
+  if (projectCityId) return { projectCityId }
+  return undefined
+}
+
+/**
+ * Build a tenant-aware filter for Lock.
+ */
+export function lockScopeWhere(req: Request): any | undefined {
+  const projectCityId = getEffectiveProjectCityId(req)
+  if (projectCityId) return { projectCityId }
+  return undefined
+}
+
+/**
+ * Build a tenant-aware filter for User.
+ */
+export function userScopeWhere(req: Request): any | undefined {
+  const projectCityId = getEffectiveProjectCityId(req)
+  if (projectCityId) return { projectCityId }
+  return undefined
 }

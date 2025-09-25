@@ -3,14 +3,14 @@ import PermissionService from '../services/permission.service'
 import AuditService from '../services/audit.service'
 import { AuditAction } from '../types'
 import { CreatePermissionRequest } from '../types'
-import { getEffectiveCityId } from '../lib/scope'
+import { getEffectiveProjectCityId } from '../lib/scope'
 
 class PermissionController {
   async list(req: Request, res: Response) {
     try {
       const { userId, lockId } = req.query as any
-      const effectiveCityId = getEffectiveCityId(req)
-      const items = await PermissionService.list(userId, lockId, effectiveCityId)
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+      const items = await PermissionService.list(userId, lockId, effectiveProjectCityId)
       res.json({ success: true, data: items })
     } catch (error) {
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to fetch permissions' })
@@ -20,17 +20,23 @@ class PermissionController {
   async assign(req: Request, res: Response) {
     try {
       const data: CreatePermissionRequest = req.body
-      // Enforce city scope: user.cityId and lock.address.cityId must match actor.cityId for non-super-admin
+      // CRITICAL: Enforce project-city scope for ALL users, including ADMIN
+      // This ensures perfect tenant isolation
       const actor = (req as any).user
-      if (actor?.role !== 'SUPER_ADMIN') {
-        const [targetUser, targetLock] = await Promise.all([
-          PermissionService.getUserCity(data.userId),
-          PermissionService.getLockCity(data.lockId)
-        ])
-        if (!targetUser || !targetLock || (actor?.cityId && (targetUser !== actor.cityId || targetLock !== actor.cityId))) {
-          return res.status(403).json({ success: false, error: 'Insufficient scope to assign permissions' })
-        }
+      const [targetUser, targetLock] = await Promise.all([
+        PermissionService.getUserProjectCity(data.userId),
+        PermissionService.getLockProjectCity(data.lockId)
+      ])
+      
+      // Verify tenant isolation: user, lock, and actor must all be in the same project-city
+      if (!targetUser || !targetLock || !actor?.projectCityId) {
+        return res.status(403).json({ success: false, error: 'Insufficient scope to assign permissions' })
       }
+      
+      if (targetUser !== actor.projectCityId || targetLock !== actor.projectCityId) {
+        return res.status(403).json({ success: false, error: 'Insufficient scope to assign permissions' })
+      }
+      
       const item = await PermissionService.assign(data)
       await AuditService.log({ req, action: AuditAction.PERMISSION_GRANT, entityType: 'UserPermission', entityId: item.id, newValues: item as any })
       res.status(201).json({ success: true, data: item, message: 'Permission assigned' })
@@ -42,14 +48,19 @@ class PermissionController {
   async update(req: Request, res: Response) {
     try {
       const { id } = req.params
-      // We don't fetch before; rely on service to throw if not found, and log after
+      // CRITICAL: Enforce project-city scope for ALL users, including ADMIN
       const actor = (req as any).user
-      if (actor?.role !== 'SUPER_ADMIN') {
-        const { userCityId, lockCityId } = await PermissionService.getPermissionCities(id)
-        if (actor?.cityId && (userCityId !== actor.cityId || lockCityId !== actor.cityId)) {
-          return res.status(403).json({ success: false, error: 'Insufficient scope to update permission' })
-        }
+      const { userProjectCityId, lockProjectCityId } = await PermissionService.getPermissionProjectCities(id)
+      
+      // Verify tenant isolation: permission user and lock must be in actor's project-city
+      if (!actor?.projectCityId || !userProjectCityId || !lockProjectCityId) {
+        return res.status(403).json({ success: false, error: 'Insufficient scope to update permission' })
       }
+      
+      if (userProjectCityId !== actor.projectCityId || lockProjectCityId !== actor.projectCityId) {
+        return res.status(403).json({ success: false, error: 'Insufficient scope to update permission' })
+      }
+      
       const item = await PermissionService.update(id, req.body)
       await AuditService.log({ req, action: AuditAction.UPDATE, entityType: 'UserPermission', entityId: id, newValues: item as any })
       res.json({ success: true, data: item, message: 'Permission updated' })
@@ -61,13 +72,19 @@ class PermissionController {
   async revoke(req: Request, res: Response) {
     try {
       const { id } = req.params
+      // CRITICAL: Enforce project-city scope for ALL users, including ADMIN
       const actor = (req as any).user
-      if (actor?.role !== 'SUPER_ADMIN') {
-        const { userCityId, lockCityId } = await PermissionService.getPermissionCities(id)
-        if (actor?.cityId && (userCityId !== actor.cityId || lockCityId !== actor.cityId)) {
-          return res.status(403).json({ success: false, error: 'Insufficient scope to revoke permission' })
-        }
+      const { userProjectCityId, lockProjectCityId } = await PermissionService.getPermissionProjectCities(id)
+      
+      // Verify tenant isolation: permission user and lock must be in actor's project-city
+      if (!actor?.projectCityId || !userProjectCityId || !lockProjectCityId) {
+        return res.status(403).json({ success: false, error: 'Insufficient scope to revoke permission' })
       }
+      
+      if (userProjectCityId !== actor.projectCityId || lockProjectCityId !== actor.projectCityId) {
+        return res.status(403).json({ success: false, error: 'Insufficient scope to revoke permission' })
+      }
+      
       await PermissionService.revoke(id)
       await AuditService.log({ req, action: AuditAction.PERMISSION_REVOKE, entityType: 'UserPermission', entityId: id })
       res.json({ success: true, message: 'Permission revoked' })

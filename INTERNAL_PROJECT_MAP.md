@@ -179,6 +179,17 @@ Components (feature)
 - Routing/guards: `Navigation.tsx`, `ProtectedRoute.tsx`
 - UI kit: `components/ui/` — `DataTable.tsx`, `FilterBar.tsx`, `Pagination.tsx`
 
+Routes (App.tsx)
+
+- `/` → `Dashboard`
+- `/dashboard` → `Dashboard`
+- `/users` → `UserManagement` (roles: SUPER_ADMIN, ADMIN)
+- `/access-logs` → `AccessLogs` (roles: SUPER_ADMIN, ADMIN, SUPERVISOR)
+- `/locks` → `Locks` (roles: SUPER_ADMIN, ADMIN, SUPERVISOR)
+- `/location/:addressId` → `pages/LocationDetails` (roles: SUPER_ADMIN, ADMIN, SUPERVISOR)
+- `/audit-logs` → `AuditLogs` (roles: SUPER_ADMIN, ADMIN, SUPERVISOR)
+- `/settings` → `Settings` (roles: SUPER_ADMIN, ADMIN)
+
 Pages
 
 - `pages/LocationDetails.tsx` — route currently `/location/:addressId` (docs use `/locations/:addressId`; alias planned)
@@ -188,6 +199,26 @@ Services
 - `services/api.ts` — Axios client & interceptors
 - `services/locationApi.ts` — location endpoints
 - `services/websocket.ts`, `services/socket.ts` — socket.io-client
+
+Service endpoints currently used by UI
+
+- Auth: `POST /api/auth/login`, `GET /api/auth/profile`, `POST /api/auth/refresh-token` (handled automatically by response interceptor on 401)
+- Dashboard: `GET /api/dashboard` with optional `cityId`
+- Users: `GET /api/user` (filters: `page`, `limit`, `sortBy`, `sortOrder`, `search`, `role`, `isActive`), `GET /api/user/:id`, `PUT /api/user/:id`, `POST /api/user`, `DELETE /api/user/:id`, `GET /api/user/export`
+- Locks: `GET /api/lock` (params: `activeOnly`, optional `cityId`), `PUT /api/lock/:id`, `POST /api/lock/:id/ping`
+- Access logs: `GET /api/lock/access-logs` (params: `page`, `limit`, `sortBy`, `sortOrder`, `userId`, `lockId`, `addressId`, `result`, `accessType`, `startDate`, `endDate`, optional `cityId`); `GET /api/lock/access-logs/export` returns CSV (blob)
+- Audit logs: `GET /api/audit` (params: `page`, `limit`, `sortBy`, `sortOrder`, `action`, `userId`, `entityType`, `startDate`, `endDate`)
+- Permissions: `GET /api/permission?userId=...`, `POST /api/permission`, `DELETE /api/permission/:id`
+- RFID keys: `GET /api/rfid?userId=...`, `POST /api/rfid`, `PUT /api/rfid/:id`
+- City directory: `GET /api/city`
+- Location overview: `GET /api/location/:addressId/users` (params: `page`, `limit`, `status`, optional `cityId`), `GET /api/location/:addressId/locks` (params: `page`, `limit`, `status`), `GET /api/location/:addressId/keys` (params: `page`, `limit`, `status`), `POST /api/location/:addressId/permissions`, `POST /api/location/:addressId/keys/assign`
+
+WebSocket client
+
+- Connection URL: `VITE_API_URL` (defaults to `http://localhost:5001`)
+- Auth payload: `{ token: 'Bearer <accessToken>', cityId?: string }`
+- Events listened (location details): `key.created`, `key.updated`, `key.reassigned`, `key.revoked`, `key.expired`, `permission.granted`, `permission.revoked`, `lock.online`, `lock.offline`, `lock.updated`
+- City scoping: `CityContext` stores `cityId` in `localStorage` and dispatches `city:changed` on updates; consumers refresh on change.
 
 ---
 
@@ -232,6 +263,7 @@ Location Overview & Admin Connect
 
 - Backend: `routes/location.routes.ts`, `controllers/location.controller.ts`
 - Frontend: `pages/LocationDetails.tsx`, `services/locationApi.ts`
+- Note: Frontend route is `/location/:addressId` while docs show `/locations/:addressId`; consider adding a route alias or redirect to avoid confusion.
 
 City Directory (Login)
 
@@ -285,8 +317,14 @@ Frontend
 
 ## Notes & Known Gaps (from comparison)
 
-- Route naming: Frontend uses `/location/:addressId`; docs use `/locations/:addressId` — plan to add alias.
+- Route naming: Frontend uses `/location/:addressId`; docs use `/locations/:addressId` — plan to add alias route or update docs for consistency.
 - Post-login redirect: to assigned location(s) or dashboard — planned.
 - Notification service: Twilio deps present but not wired — add provider abstraction and hook into 2FA.
 - Optional caching: Redis for dashboard endpoints.
 - Testing: add frontend tests for Location Details, post-login redirect, and 2FA; backend tests for upcoming `GET /api/project`.
+
+Authentication/Session details
+
+- Tokens: Access + Refresh tokens stored in `localStorage` as `token` and `refreshToken`.
+- Refresh flow: Axios response interceptor retries original request on 401 by calling `POST /api/auth/refresh-token` with `refreshToken`; on failure, clears tokens and redirects to `/`.
+- City scope persistence: `CityContext` stores `cityId` in `localStorage` and appends it to relevant requests (e.g., dashboard, locks, access logs); `Login` requires a city selection.

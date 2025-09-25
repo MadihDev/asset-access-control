@@ -1,19 +1,19 @@
 import request from 'supertest'
 import app from '../src/app'
 
-// Mock auth service to provide role and city context
+// Mock auth service to provide role and project-city context
 jest.mock('../src/services/auth.service', () => ({
   __esModule: true,
   default: {
     validateToken: jest.fn(async (token: string) => {
       if (token === 'super') {
-        return { id: 'u-super', email: 'super@example.com', role: 'SUPER_ADMIN', cityId: undefined }
+        return { id: 'u-super', email: 'super@example.com', role: 'SUPER_ADMIN', projectCityId: undefined }
       }
       if (token === 'managerA') {
-        return { id: 'u-mgr-a', email: 'mgr@example.com', role: 'ADMIN', cityId: 'cityA' }
+        return { id: 'u-mgr-a', email: 'mgr@example.com', role: 'ADMIN', projectCityId: 'pc-a' }
       }
       if (token === 'managerB') {
-        return { id: 'u-mgr-b', email: 'mgrb@example.com', role: 'ADMIN', cityId: 'cityB' }
+        return { id: 'u-mgr-b', email: 'mgrb@example.com', role: 'ADMIN', projectCityId: 'pc-b' }
       }
       return null
     }),
@@ -26,11 +26,10 @@ describe('Access Logs scoping and pagination', () => {
     expect(res.status).toBe(401)
   })
 
-  it('SUPER_ADMIN can pass explicit cityId', async () => {
+  it('SUPER_ADMIN can access all project-city data', async () => {
     const res = await request(app)
       .get('/api/lock/access-logs')
-      // Use a CUID-like string to satisfy ID validation
-      .query({ cityId: 'ck1u5l9q00000000000000000', page: 1, limit: 5 })
+      .query({ page: 1, limit: 5 })
       .set('Authorization', 'Bearer super')
     // DB dependency may cause 500; at minimum, it should not be 401/403 and should include pagination keys when 200
     expect([200, 500]).toContain(res.status)
@@ -43,7 +42,7 @@ describe('Access Logs scoping and pagination', () => {
     }
     }, 15000)
 
-  it('Manager is implicitly scoped to their city if no cityId provided', async () => {
+  it('Manager is implicitly scoped to their project-city', async () => {
     const res = await request(app)
       .get('/api/lock/access-logs')
       .query({ page: 1, limit: 5 })

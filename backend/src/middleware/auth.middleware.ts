@@ -70,9 +70,8 @@ export const requireRole = (roles: UserRole | UserRole[]) => {
   }
 }
 
-export const requireAdmin = requireRole([UserRole.SUPER_ADMIN, UserRole.ADMIN])
-export const requireSuperAdmin = requireRole(UserRole.SUPER_ADMIN)
-export const requireManagerOrAbove = requireRole([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SUPERVISOR])
+export const requireAdmin = requireRole([UserRole.ADMIN])
+export const requireManagerOrAbove = requireRole([UserRole.ADMIN, UserRole.SUPERVISOR])
 
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

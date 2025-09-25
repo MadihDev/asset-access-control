@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import AccessController from '../controllers/access.controller'
 import LockController from '../controllers/lock.controller'
+import AccessController from '../controllers/access.controller'
 import { authenticateToken, requireAdmin, requireManagerOrAbove } from '../middleware/auth.middleware'
 import { 
   validateAccessAttempt,
@@ -18,6 +18,9 @@ router.use(authenticateToken)
 // GET /api/lock/access-logs - Get access logs
 router.get('/access-logs', validateAccessLogQuery, AccessController.getAccessLogs)
 
+// POST /api/lock/access-logs/simulate - Simulate access attempt for testing (Manager+ only)
+router.post('/access-logs/simulate', requireManagerOrAbove, AccessController.simulateAccessAttempt)
+
 // GET /api/lock/access-logs/export - Export access logs as CSV (Manager+ only)
 router.get('/access-logs/export', requireManagerOrAbove, validateAccessLogQuery, AccessController.exportAccessLogs)
 
@@ -26,6 +29,9 @@ router.get('/access-stats', requireManagerOrAbove, AccessController.getAccessSta
 
 // GET /api/lock - List locks (active)
 router.get('/', LockController.list)
+
+// GET /api/lock/available - Get locks available for a specific user (Manager+)
+router.get('/available', requireManagerOrAbove, LockController.getAvailableForUser)
 
 // POST /api/lock/:id/ping - Mark lock online and update lastSeen (Manager+)
 router.post('/:id/ping', requireManagerOrAbove, LockController.ping)

@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { useCity } from '../contexts/CityContext'
+import { useTenant } from '../contexts/TenantContext'
+import { hasAnyRole, ROLES } from '../utils/rbac'
 
 const Navigation: React.FC<{ user: { id: string; email: string; firstName: string; lastName: string; role: string } }> = ({ user }) => {
   const { logout } = useAuth()
-  const { cities, selectedCityId, setSelectedCityId } = useCity()
+  const { mode, projects, cities, selection, setSelection } = useTenant()
   const location = useLocation()
   const [wsConnected, setWsConnected] = useState<boolean>(false)
 
@@ -13,10 +14,11 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
     return location.pathname === path || (path === '/dashboard' && location.pathname === '/')
   }
 
-  const canAccessUserManagement = ['SUPER_ADMIN', 'ADMIN'].includes(user.role)
-  const canAccessSettings = ['SUPER_ADMIN', 'ADMIN', 'SUPERVISOR'].includes(user.role)
-  const canAccessLocks = ['SUPER_ADMIN', 'ADMIN', 'SUPERVISOR'].includes(user.role)
-  const canAccessAudit = ['SUPER_ADMIN', 'ADMIN', 'SUPERVISOR'].includes(user.role)
+  // Role-based access control using RBAC utilities
+  const canAccessUserManagement = hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN])
+  const canAccessSettings = hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR])
+  const canAccessLocks = hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR])
+  const canAccessAudit = hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR])
 
   useEffect(() => {
     const onConnected = () => setWsConnected(true)
@@ -83,6 +85,19 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
                 </Link>
               )}
 
+              {canAccessLocks && (
+                <Link
+                  to="/locations"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    isActive('/locations')
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Locations
+                </Link>
+              )}
+
               {canAccessAudit && (
                 <Link
                   to="/audit-logs"
@@ -126,21 +141,46 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
-            {/* City selector for SUPER_ADMIN */}
-            {user.role === 'SUPER_ADMIN' && (
-              <div className="hidden md:flex items-center">
-                <label htmlFor="city-select" className="sr-only">City</label>
-                <select
-                  id="city-select"
-                  className="mr-3 px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700"
-                  value={selectedCityId || ''}
-                  onChange={(e) => setSelectedCityId(e.target.value || null)}
-                >
-                  <option value="">All Cities</option>
-                  {cities.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+            {/* City/Tenant selector for SUPER_ADMIN */}
+            {hasAnyRole(user, [ROLES.SUPER_ADMIN]) && (
+              <div className="hidden md:flex items-center space-x-2">
+                {mode === 'project-city' && (
+                  <>
+                    <select
+                      className="px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700"
+                      value={selection.project || ''}
+                      onChange={(e) => setSelection({ ...selection, project: e.target.value || undefined, cityId: undefined })}
+                    >
+                      <option value="">Select Project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.slug || p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700"
+                      value={selection.cityId || ''}
+                      onChange={(e) => setSelection({ ...selection, cityId: e.target.value || undefined })}
+                      disabled={!selection.project}
+                    >
+                      <option value="">Select City</option>
+                      {cities.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+                {mode === 'city-only' && (
+                  <select
+                    className="px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700"
+                    value={selection.cityId || ''}
+                    onChange={(e) => setSelection({ cityId: e.target.value || undefined })}
+                  >
+                    <option value="">All Cities</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
             {/* User Info */}
@@ -211,6 +251,19 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
               }`}
             >
               Locks
+            </Link>
+          )}
+
+          {canAccessLocks && (
+            <Link
+              to="/locations"
+              className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
+                isActive('/locations')
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              Locations
             </Link>
           )}
 

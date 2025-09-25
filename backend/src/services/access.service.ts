@@ -183,7 +183,7 @@ class AccessService {
     const sortDir: 'asc' | 'desc' = (typeof query.sortOrder === 'string' && allowedSortOrders.has(query.sortOrder)) ? (query.sortOrder as 'asc' | 'desc') : 'desc'
 
   const skip = (pageNum - 1) * limitNum
-      const { userId, lockId, result, accessType, startDate, endDate, cityId } = query
+      const { userId, lockId, result, accessType, startDate, endDate, projectCityId } = query
   const where: any = {}
 
     if (userId) {
@@ -215,9 +215,14 @@ class AccessService {
       }
     }
 
-      if (cityId) {
-        where.cityId = cityId
+    if (projectCityId) {
+      // Strict tenant isolation: Filter by both access log projectCityId AND lock projectCityId
+      where.projectCityId = projectCityId
+      where.lock = { 
+        ...(where.lock || {}), 
+        projectCityId: projectCityId 
       }
+    }
 
     const [accessLogs, total] = await Promise.all([
       prisma.accessLog.findMany({
@@ -270,7 +275,7 @@ class AccessService {
     }
   }
 
-  async getAccessStats(timeframe: 'day' | 'week' | 'month' = 'week', cityId?: string): Promise<{
+  async getAccessStats(timeframe: 'day' | 'week' | 'month' = 'week', projectCityId?: string): Promise<{
     totalAttempts: number
     successfulAttempts: number
     failedAttempts: number
@@ -299,7 +304,7 @@ class AccessService {
         timestamp: {
           gte: startDate
         },
-        ...(cityId ? { cityId } : {})
+        ...(projectCityId ? { projectCityId } : {})
       },
       include: {
         user: {
@@ -364,6 +369,63 @@ class AccessService {
     }
   }
 
+  async simulateAccessAttempt(data: {
+    accessType: string
+    result: string
+    userId: string
+    projectCityId: string
+  }): Promise<AccessLog> {
+    // Find a random lock in the user's project-city for simulation
+    const lock = await prisma.lock.findFirst({
+      where: {
+        projectCityId: data.projectCityId,
+        isActive: true
+      },
+      include: {
+        address: {
+          include: {
+            city: true
+          }
+        }
+      }
+    })
+
+    if (!lock) {
+      throw new Error('No locks available for simulation in this project-city')
+    }
+
+    // Find or create an RFID key for the user
+    let rfidKey = await prisma.rFIDKey.findFirst({
+      where: {
+        userId: data.userId
+      }
+    })
+
+    if (!rfidKey) {
+      // Create a temporary RFID key for simulation
+      rfidKey = await prisma.rFIDKey.create({
+        data: {
+          cardId: `TEMP_${Date.now()}`,
+          name: 'Temporary Test Card',
+          userId: data.userId,
+          isActive: true
+        }
+      })
+    }
+
+    // Create the simulated access log
+    const accessLog = await this.createAccessLog({
+      accessType: data.accessType,
+      result: data.result as AccessResult,
+      lockId: lock.id,
+      userId: data.userId,
+      rfidKeyId: rfidKey.id,
+      metadata: { simulated: true, timestamp: new Date().toISOString() }
+    })
+
+    return accessLog
+  }
+
   private async createAccessLog(data: {
     accessType: string
     result: AccessResult
@@ -378,8 +440,23 @@ class AccessService {
         where: { id: data.lockId },
         select: { address: { select: { cityId: true } } }
       })
+      
+      // Get user's projectCityId for proper tenant scoping
+      let userProjectCityId: string | undefined = undefined
+      if (data.userId) {
+        const user = await prisma.user.findUnique({
+          where: { id: data.userId },
+          select: { projectCityId: true }
+        })
+        userProjectCityId = user?.projectCityId || undefined
+      }
+      
       const accessLog = await prisma.accessLog.create({
-        data: { ...data, cityId: lockCity?.address?.cityId },
+        data: { 
+          ...data, 
+          cityId: lockCity?.address?.cityId,
+          projectCityId: userProjectCityId
+        },
       include: {
         user: true,
         rfidKey: true,
@@ -395,15 +472,15 @@ class AccessService {
       }
     })
 
-    // Emit WebSocket events to the city's room, if city is known
+    // Emit WebSocket events to the project-city's room, if projectCityId is known
     try {
-      const cityId = accessLog.lock?.address?.city?.id
-      if (typeof cityId === 'string' && cityId.length > 0) {
+      const projectCityId = accessLog.lock?.projectCityId
+      if (typeof projectCityId === 'string' && projectCityId.length > 0) {
         const { id, result, accessType, timestamp, userId, rfidKeyId, lockId } = accessLog as any
         const payload = { id, result, accessType, timestamp, userId, rfidKeyId, lockId }
-        const { emitToCity } = await import('../lib/ws')
-        emitToCity(cityId, 'access.created', payload)
-        emitToCity(cityId, 'kpi:update', { reason: 'access.created' })
+        const { emitToProjectCity } = await import('../lib/ws')
+        emitToProjectCity(projectCityId, 'access.created', payload)
+        emitToProjectCity(projectCityId, 'kpi:update', { reason: 'access.created' })
       }
     } catch (_err) {
       // best-effort only

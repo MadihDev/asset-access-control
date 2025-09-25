@@ -20,8 +20,13 @@ model User {
   updatedAt    DateTime         @updatedAt
   lastLoginAt  DateTime?
   createdById  String?
-  cityId       String?
-  city         City?            @relation(fields: [cityId], references: [id])
+  // Tenant scope (Project + City)
+  projectCityId String?
+  projectCity    ProjectCity?   @relation(fields: [projectCityId], references: [id])
+  // Two-Factor Authentication fields
+  phone                 String?           // E.164 format, verified
+  twoFactorEnabled      Boolean           @default(false)
+  twoFactorVerifiedAt   DateTime?         // Record of phone verification
   accessLogs   AccessLog[]
   auditLogs    AuditLog[]
   rfidKeys     RFIDKey[]
@@ -29,9 +34,10 @@ model User {
   createdBy    User?            @relation("UserCreator", fields: [createdById], references: [id])
   createdUsers User[]           @relation("UserCreator")
   refreshTokens RefreshToken[]
+  twoFactorChallenges TwoFactorChallenge[]
 
   @@map("users")
-  @@index([cityId], map: "idx_users_city")
+  @@index([projectCityId], map: "idx_users_project_city")
 }
 
 model City {
@@ -42,7 +48,7 @@ model City {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   addresses Address[]
-  users     User[]
+  projectCities ProjectCity[]
 
   @@map("cities")
 }
@@ -57,11 +63,34 @@ model Address {
   updatedAt DateTime @updatedAt
   cityId    String
   city      City     @relation(fields: [cityId], references: [id])
-  locks     Lock[]
+  // Tenant scope (Project + City)
+  projectCityId String?
+  projectCity   ProjectCity? @relation(fields: [projectCityId], references: [id])
+  locations Location[]
 
   @@unique([street, number, zipCode, cityId])
   @@map("addresses")
-  @@index([cityId], map: "idx_addresses_city")
+  @@index([projectCityId], map: "idx_addresses_project_city")
+}
+
+model Location {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  addressId   String
+  // Tenant scope (Project + City)
+  projectCityId String?
+  projectCity   ProjectCity? @relation(fields: [projectCityId], references: [id])
+  address     Address   @relation(fields: [addressId], references: [id])
+  locks       Lock[]
+
+  @@unique([name, addressId], map: "uq_locations_name_address")
+  @@map("locations")
+  @@index([addressId], map: "idx_locations_address")
+  @@index([projectCityId], map: "idx_locations_project_city")
 }
 
 model Lock {
@@ -76,14 +105,18 @@ model Lock {
   lastSeen    DateTime?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
-  addressId   String
+  locationId  String
+  // Tenant scope (Project + City)
+  projectCityId String?
+  projectCity   ProjectCity?   @relation(fields: [projectCityId], references: [id])
   accessLogs  AccessLog[]
-  address     Address          @relation(fields: [addressId], references: [id])
+  location    Location         @relation(fields: [locationId], references: [id])
   permissions UserPermission[]
 
   @@map("locks")
-  @@index([addressId], map: "idx_locks_address")
+  @@index([locationId], map: "idx_locks_location")
   @@index([isActive, isOnline], map: "idx_locks_active_online")
+  @@index([projectCityId], map: "idx_locks_project_city")
 }
 
 model RFIDKey {
@@ -96,12 +129,16 @@ model RFIDKey {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   userId     String
+  // Tenant scope (Project + City)
+  projectCityId String?
+  projectCity   ProjectCity? @relation(fields: [projectCityId], references: [id])
   accessLogs AccessLog[]
   user       User        @relation(fields: [userId], references: [id])
 
   @@map("rfid_keys")
   @@index([userId], map: "idx_rfid_keys_user")
   @@index([isActive, expiresAt], map: "idx_rfid_keys_active_exp")
+  @@index([projectCityId], map: "idx_rfid_keys_project_city")
 }
 
 model UserPermission {
@@ -113,6 +150,9 @@ model UserPermission {
   updatedAt DateTime  @updatedAt
   userId    String
   lockId    String
+  // Tenant scope (Project + City)
+  projectCityId String?
+  projectCity   ProjectCity? @relation(fields: [projectCityId], references: [id])
   lock      Lock      @relation(fields: [lockId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
 
@@ -120,6 +160,7 @@ model UserPermission {
   @@map("user_permissions")
   @@index([lockId], map: "idx_user_permissions_lock")
   @@index([userId], map: "idx_user_permissions_user")
+  @@index([projectCityId], map: "idx_user_permissions_project_city")
 }
 
 model AccessLog {
@@ -132,17 +173,57 @@ model AccessLog {
   userId     String?
   rfidKeyId  String?
   lockId     String
-  // Denormalized cityId for fast filtering/indexing
+  // Denormalized cityId for fast filtering/indexing - this will be removed
   cityId     String?
+  // Tenant scope (Project + City)
+  projectCityId String?
+  projectCity   ProjectCity?  @relation(fields: [projectCityId], references: [id])
   lock       Lock         @relation(fields: [lockId], references: [id])
   rfidKey    RFIDKey?     @relation(fields: [rfidKeyId], references: [id])
   user       User?        @relation(fields: [userId], references: [id])
 
   @@map("access_logs")
-  @@index([cityId, timestamp], map: "idx_access_logs_city_ts")
+  @@index([projectCityId, timestamp], map: "idx_access_logs_project_city_ts")
   @@index([result], map: "idx_access_logs_result")
   @@index([userId], map: "idx_access_logs_user")
   @@index([lockId], map: "idx_access_logs_lock")
+}
+
+// New tenant models (Project + City linking)
+model Project {
+  id          String         @id @default(cuid())
+  name        String         @unique
+  slug        String         @unique
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  projectCities ProjectCity[]
+
+  @@map("projects")
+}
+
+model ProjectCity {
+  id        String   @id @default(cuid())
+  projectId String
+  cityId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id])
+  city    City    @relation(fields: [cityId], references: [id])
+  // Back-relations
+  users       User[]
+  addresses   Address[]
+  locations   Location[]
+  locks       Lock[]
+  permissions UserPermission[]
+  accessLogs  AccessLog[]
+  rfidKeys    RFIDKey[]
+
+  @@unique([projectId, cityId], map: "uq_project_cities_project_city")
+  @@index([projectId], map: "idx_project_cities_project")
+  @@index([cityId], map: "idx_project_cities_city")
+  @@map("project_cities")
 }
 
 model AuditLog {
@@ -181,6 +262,23 @@ model NotificationTemplate {
   updatedAt DateTime         @updatedAt
 
   @@map("notification_templates")
+}
+
+// Two-Factor Authentication challenges (ephemeral)
+model TwoFactorChallenge {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash    String   // bcrypt hash of 6-digit code
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  method      String   @default("sms") // "sms" | "totp" (future-proof)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("two_factor_challenges")
+  @@index([userId, expiresAt], map: "idx_twofactor_user_expires")
 }
 
 enum UserRole {

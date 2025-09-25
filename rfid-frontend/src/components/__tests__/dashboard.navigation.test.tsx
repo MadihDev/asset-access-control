@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Dashboard from '../Dashboard'
+import { AuthProvider } from '../../contexts/AuthContext'
+import { TenantProvider } from '../../contexts/TenantContext'
 
 // Mock API client used by Dashboard
 vi.mock('../../services/api', () => {
@@ -39,6 +41,7 @@ vi.mock('../../services/api', () => {
         }
         return Promise.resolve({ data: { success: true, data: {} } })
       }),
+      post: vi.fn(),
     },
   }
 })
@@ -56,6 +59,17 @@ vi.mock('../../contexts/CityContext', () => {
   }
 })
 
+// Mock tenant scope hook
+vi.mock('../../hooks/useTenantScope', () => {
+  return {
+    useTenantScope: () => ({
+      tenantParams: { cityId: 'city-1' },
+      selectedCityId: 'city-1',
+      scopedQuery: (key: string[]) => [...key, 'city-1'],
+    }),
+  }
+})
+
 // Mock toast hook to avoid needing provider
 vi.mock('../../hooks/useToast', () => {
   return {
@@ -64,18 +78,22 @@ vi.mock('../../hooks/useToast', () => {
 })
 
 describe('Dashboard navigation', () => {
-  it('links location name to /location/:addressId with ?cityId when selected', async () => {
+  it('displays location name as text in the locations table', async () => {
     render(
       <MemoryRouter>
-        <Dashboard
-          user={{ id: 'u1', email: 'a@b.com', firstName: 'A', lastName: 'B', role: 'manager' }}
-        />
+        <AuthProvider>
+          <TenantProvider>
+            <Dashboard
+              user={{ id: 'u1', email: 'a@b.com', firstName: 'A', lastName: 'B', role: 'manager' }}
+            />
+          </TenantProvider>
+        </AuthProvider>
       </MemoryRouter>
     )
 
-    const link = await waitFor(() => screen.getByRole('link', { name: 'HQ Building' }))
-    expect(link).toBeInTheDocument()
-    // In JSDOM, href is absolute; expect it to end with our path
-    expect((link as HTMLAnchorElement).getAttribute('href')).toBe('/location/addr-1?cityId=city-1')
+    const locationText = await waitFor(() => screen.getByText('HQ Building'))
+    expect(locationText).toBeTruthy()
+    // Location name should be displayed as text, not as a link
+    expect(locationText.tagName.toLowerCase()).not.toBe('a')
   })
 })

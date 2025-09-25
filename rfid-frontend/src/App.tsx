@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
@@ -7,8 +6,8 @@ import UserManagement from './components/UserManagement'
 import AccessLogs from './components/AccessLogs'
 import AuditLogs from './components/AuditLogs'
 import Locks from './components/Locks'
+import Locations from './components/Locations'
 import Settings from './components/Settings'
-import LocationDetails from './pages/LocationDetails'
 import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { ROLES } from './utils/rbac'
@@ -18,13 +17,8 @@ import { useCity } from './contexts/CityContext'
 function App() {
   const { user, loading } = useAuth()
   const { selectedCityId } = useCity()
-  // Establish WS connection after login; token is stored in localStorage
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
   useWebSocket(!!user && !!token, token, selectedCityId)
-
-  useEffect(() => {
-    // no-op here; AuthProvider handles initial load
-  }, [])
 
   if (loading) {
     return (
@@ -44,7 +38,7 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
-  <Navigation user={user} />
+        <Navigation user={user} />
         
         <main className="container mx-auto px-4 py-8">
           <Routes>
@@ -62,7 +56,7 @@ function App() {
               path="/access-logs"
               element={
                 <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
-                  <AccessLogs user={user} />
+                  <AccessLogs />
                 </ProtectedRoute>
               }
             />
@@ -75,10 +69,10 @@ function App() {
               }
             />
             <Route
-              path="/location/:addressId"
+              path="/locations"
               element={
                 <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
-                  <LocationDetails />
+                  <Locations />
                 </ProtectedRoute>
               }
             />

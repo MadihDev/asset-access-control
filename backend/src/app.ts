@@ -11,8 +11,9 @@ import { apiLimiter, authLimiter } from './middleware/rateLimit.middleware'
 import permissionRoutes from './routes/permission.routes'
 import rfidRoutes from './routes/rfid.routes'
 import auditRoutes from './routes/audit.routes'
-import cityRoutes from './routes/city.routes'
+import projectRoutes from './routes/project.routes'
 import locationRoutes from './routes/location.routes'
+import addressRoutes from './routes/address.routes'
 import simRoutes from './routes/sim.routes'
 
 // Load environment variables
@@ -41,8 +42,9 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/permission', permissionRoutes)
 app.use('/api/rfid', rfidRoutes)
 app.use('/api/audit', auditRoutes)
-app.use('/api/city', cityRoutes)
+app.use('/api/project', projectRoutes)
 app.use('/api/location', locationRoutes)
+app.use('/api/address', addressRoutes)
 // Dev/test-only simulation routes
 if (process.env.ENABLE_SIM_ROUTES === 'true') {
   app.use('/api/sim', simRoutes)

@@ -1,8 +1,8 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
-import { getEffectiveCityId } from '../lib/scope'
-import { emitToCity } from '../lib/ws'
+import { emitToProjectCity } from '../lib/ws'
 import { UserRole } from '../types'
+import { getEffectiveProjectCityId } from '../lib/scope'
 
 class LocationController {
   // GET /api/location/:addressId/users
@@ -15,14 +15,14 @@ class LocationController {
       const limit = Math.min(Math.max(parseInt(String(limitRaw || 25), 10) || 25, 1), 1000)
       const offset = (page - 1) * limit
 
-      // Verify address exists and (optionally) belongs to effective city scope
-      const effectiveCityId = getEffectiveCityId(req)
-      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, cityId: true } })
+      // Verify address exists and (optionally) belongs to effective project-city scope
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, projectCityId: true } })
       if (!address) {
         return res.status(404).json({ success: false, error: 'Address not found' })
       }
-      if (effectiveCityId && address.cityId !== effectiveCityId) {
-        // Enforce city scope: address must be inside effective city when scoped
+      if (effectiveProjectCityId && address.projectCityId !== effectiveProjectCityId) {
+        // Enforce project-city scope: address must be inside effective project-city when scoped
         return res.status(403).json({ success: false, error: 'Insufficient scope for this address' })
       }
 
@@ -34,7 +34,7 @@ class LocationController {
         where: {
           canAccess: true,
           validFrom: { lte: now },
-          OR: [{ validTo: null }, { validTo: { gt: now } }],
+          validTo: { gt: now }, // All permissions now have expiration dates
           lock: { addressId },
         },
         select: { userId: true },
@@ -90,11 +90,25 @@ class LocationController {
       const totalPages = total === 0 ? 0 : Math.ceil(total / limit)
       const pageIds = selectedIds.slice(offset, offset + limit)
 
-      type SlimUser = { id: string; firstName: string; lastName: string; email: string; role: UserRole }
+      type SlimUser = { id: string; firstName: string; lastName: string; email: string; role: UserRole; rfidKeys: any[] }
       const users: SlimUser[] = pageIds.length
         ? await prisma.user.findMany({
             where: { id: { in: pageIds } },
-            select: { id: true, firstName: true, lastName: true, email: true, role: true },
+            select: { 
+              id: true, 
+              firstName: true, 
+              lastName: true, 
+              email: true, 
+              role: true,
+              rfidKeys: {
+                where: { isActive: true },
+                select: {
+                  id: true,
+                  cardId: true,
+                  isActive: true
+                }
+              }
+            },
           })
         : ([] as SlimUser[])
 
@@ -112,6 +126,7 @@ class LocationController {
         email: u.email,
         role: u.role,
         activeAtLocation: activeSet.has(u.id),
+        rfidKeys: u.rfidKeys || []
       }))
 
       return res.status(200).json({
@@ -141,11 +156,11 @@ class LocationController {
       const limit = Math.min(Math.max(parseInt(String(limitRaw || 25), 10) || 25, 1), 1000)
       const offset = (page - 1) * limit
 
-      // Scope enforcement: address must exist and be within effective city if applicable
-      const effectiveCityId = getEffectiveCityId(req)
-      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, cityId: true } })
+      // Scope enforcement: address must exist and be within effective project-city if applicable
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, projectCityId: true } })
       if (!address) return res.status(404).json({ success: false, error: 'Address not found' })
-      if (effectiveCityId && address.cityId !== effectiveCityId) {
+      if (effectiveProjectCityId && address.projectCityId !== effectiveProjectCityId) {
         return res.status(403).json({ success: false, error: 'Insufficient scope for this address' })
       }
 
@@ -163,7 +178,13 @@ class LocationController {
           orderBy: { name: 'asc' },
           skip: offset,
           take: limit,
-          select: { id: true, name: true, isActive: true, isOnline: true, lastSeen: true, lockType: true },
+          include: {
+            _count: {
+              select: {
+                permissions: true
+              }
+            }
+          }
         }),
       ])
       const totalPages = total === 0 ? 0 : Math.ceil(total / limit)
@@ -188,65 +209,102 @@ class LocationController {
       const limit = Math.min(Math.max(parseInt(String(limitRaw || 25), 10) || 25, 1), 1000)
       const offset = (page - 1) * limit
 
-      // Enforce city scope with address
-      const effectiveCityId = getEffectiveCityId(req)
-      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, cityId: true } })
+      // Enforce project-city scope with address
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, projectCityId: true } })
       if (!address) return res.status(404).json({ success: false, error: 'Address not found' })
-      if (effectiveCityId && address.cityId !== effectiveCityId) {
+      if (effectiveProjectCityId && address.projectCityId !== effectiveProjectCityId) {
         return res.status(403).json({ success: false, error: 'Insufficient scope for this address' })
       }
 
       // Find users who have permission for any lock at this address
       const now = new Date()
-  const perms: Array<{ userId: string }> = await prisma.userPermission.findMany({
+      const perms: Array<{ userId: string }> = await prisma.userPermission.findMany({
         where: {
           canAccess: true,
           validFrom: { lte: now },
-          OR: [{ validTo: null }, { validTo: { gt: now } }],
+          validTo: { gt: now }, // All permissions now have expiration dates
           lock: { addressId },
         },
         select: { userId: true },
         distinct: ['userId'],
       })
-  const userIds = perms.map((p: { userId: string }) => p.userId)
+      const userIds = perms.map((p: { userId: string }) => p.userId)
       if (userIds.length === 0) {
         return res.status(200).json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: page > 1 } })
       }
 
-      // Build key filters
-      const where: any = { userId: { in: userIds } }
-      if (status === 'active') {
-        where.isActive = true
-        where.OR = [{ expiresAt: null }, { expiresAt: { gt: now } }]
-      } else if (status === 'expired') {
-        // Either explicitly inactive or has expiredAt in the past
-        where.OR = [
-          { isActive: false },
-          { AND: [{ expiresAt: { lt: now } }, { expiresAt: { not: null } }] },
-        ]
+      // IMPROVED LOGIC: Show only address-relevant keys
+      let keys: any[] = []
+      let total = 0
+      
+      if (status === 'all') {
+        // Show all active keys for users with access to this address
+        const where: any = { 
+          userId: { in: userIds },
+          isActive: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
+        }
+        
+        const [totalCount, allKeys] = await Promise.all([
+          prisma.rFIDKey.count({ where }),
+          prisma.rFIDKey.findMany({
+            where,
+            orderBy: [
+              { issuedAt: 'desc' },
+              { cardId: 'asc' },
+            ],
+            skip: offset,
+            take: limit,
+            select: {
+              id: true,
+              cardId: true,
+              name: true,
+              isActive: true,
+              issuedAt: true,
+              expiresAt: true,
+              user: { select: { id: true, firstName: true, lastName: true, email: true } },
+            },
+          })
+        ])
+        total = totalCount
+        keys = allKeys
+        
+      } else {
+        // Default behavior: Show most recent active key per user
+        // This gives a cleaner, more logical view for the address
+        const recentKeysPerUser = await Promise.all(
+          userIds.map(async (userId) => {
+            const userKey = await prisma.rFIDKey.findFirst({
+              where: {
+                userId,
+                isActive: true,
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
+              },
+              orderBy: {
+                issuedAt: 'desc' // Most recent key
+              },
+              select: {
+                id: true,
+                cardId: true,
+                name: true,
+                isActive: true,
+                issuedAt: true,
+                expiresAt: true,
+                user: { select: { id: true, firstName: true, lastName: true, email: true } },
+              },
+            })
+            return userKey
+          })
+        )
+        
+        // Filter out null results and apply pagination
+        const validKeys = recentKeysPerUser.filter(key => key !== null)
+        total = validKeys.length
+        
+        // Apply pagination to the filtered results
+        keys = validKeys.slice(offset, offset + limit)
       }
-
-      const [total, keys] = await Promise.all([
-        prisma.rFIDKey.count({ where }),
-        prisma.rFIDKey.findMany({
-          where,
-          orderBy: [
-            { expiresAt: 'desc' },
-            { cardId: 'asc' },
-          ],
-          skip: offset,
-          take: limit,
-          select: {
-            id: true,
-            cardId: true,
-            name: true,
-            isActive: true,
-            issuedAt: true,
-            expiresAt: true,
-            user: { select: { id: true, firstName: true, lastName: true } },
-          },
-        }),
-      ])
       const totalPages = total === 0 ? 0 : Math.ceil(total / limit)
 
       return res.status(200).json({
@@ -263,12 +321,12 @@ class LocationController {
   async bulkPermissions(req: Request, res: Response) {
     try {
       const { addressId } = req.params as { addressId: string }
-      const effectiveCityId = getEffectiveCityId(req)
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
 
       // Ensure address exists and is in scope
-      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, cityId: true } })
+      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, projectCityId: true } })
       if (!address) return res.status(404).json({ success: false, error: 'Address not found' })
-      if (effectiveCityId && address.cityId !== effectiveCityId) {
+      if (effectiveProjectCityId && address.projectCityId !== effectiveProjectCityId) {
         return res.status(403).json({ success: false, error: 'Insufficient scope for this address' })
       }
 
@@ -327,10 +385,10 @@ class LocationController {
         }
       }
 
-      // Optional: city scope on users (if effectiveCityId is set, user.cityId must match)
+      // Optional: project-city scope on users (if effectiveProjectCityId is set, user.projectCityId must match)
       const userIds: string[] = Array.from(new Set<string>([...grants.map((g) => g.userId), ...revokes.map((r) => r.userId)]))
-      if (effectiveCityId) {
-        const scopedUsers: Array<{ id: string }> = await prisma.user.findMany({ where: { id: { in: userIds }, cityId: effectiveCityId }, select: { id: true } })
+      if (effectiveProjectCityId) {
+        const scopedUsers: Array<{ id: string }> = await prisma.user.findMany({ where: { id: { in: userIds }, projectCityId: effectiveProjectCityId }, select: { id: true } })
         const scopedSet = new Set<string>(scopedUsers.map((u: { id: string }) => u.id))
         const outOfScope = userIds.filter(id => !scopedSet.has(id))
         if (outOfScope.length) {
@@ -361,16 +419,19 @@ class LocationController {
         // Process grants (upsert/update semantics on userId+lockId)
         for (const g of uniqGrants) {
           const validFrom = g.validFrom ? new Date(g.validFrom) : now
-          const validTo = g.validTo ? new Date(g.validTo) : null
+          
+          // All permissions must expire after 12 hours (no permanent permissions)
+          const validTo = g.validTo ? new Date(g.validTo) : new Date(now.getTime() + 12 * 60 * 60 * 1000)
+          
           const existing = await tx.userPermission.findUnique({ where: { userId_lockId: { userId: g.userId, lockId: g.lockId } } })
           if (existing) {
             await tx.userPermission.update({
               where: { userId_lockId: { userId: g.userId, lockId: g.lockId } },
-              data: { canAccess: true, validFrom, validTo: validTo ?? existing.validTo },
+              data: { canAccess: true, validFrom, validTo },
             })
             results.updated += 1
           } else {
-            await tx.userPermission.create({ data: { userId: g.userId, lockId: g.lockId, canAccess: true, validFrom, validTo: validTo ?? undefined } })
+            await tx.userPermission.create({ data: { userId: g.userId, lockId: g.lockId, canAccess: true, validFrom, validTo } })
             results.granted += 1
           }
         }
@@ -385,8 +446,8 @@ class LocationController {
         }
       })
 
-      // Emit realtime event to city listeners
-      emitToCity(address.cityId, 'location:permissions:changed', {
+      // Emit realtime event to project-city listeners
+      emitToProjectCity(address.projectCityId, 'location:permissions:changed', {
         addressId,
         counts: results,
         ts: new Date().toISOString(),
@@ -402,12 +463,12 @@ class LocationController {
   async bulkAssignKeys(req: Request, res: Response) {
     try {
       const { addressId } = req.params as { addressId: string }
-      const effectiveCityId = getEffectiveCityId(req)
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
 
       // Ensure address exists and is in scope
-      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, cityId: true } })
+      const address = await prisma.address.findUnique({ where: { id: addressId }, select: { id: true, projectCityId: true } })
       if (!address) return res.status(404).json({ success: false, error: 'Address not found' })
-      if (effectiveCityId && address.cityId !== effectiveCityId) {
+      if (effectiveProjectCityId && address.projectCityId !== effectiveProjectCityId) {
         return res.status(403).json({ success: false, error: 'Insufficient scope for this address' })
       }
 
@@ -441,10 +502,10 @@ class LocationController {
         }
       }
 
-      // City scoping for users
+      // Project-city scoping for users
       const userIds = Array.from(new Set<string>(items.map((i) => i.userId)))
-      if (effectiveCityId) {
-        const scopedUsers: Array<{ id: string }> = await prisma.user.findMany({ where: { id: { in: userIds }, cityId: effectiveCityId }, select: { id: true } })
+      if (effectiveProjectCityId) {
+        const scopedUsers: Array<{ id: string }> = await prisma.user.findMany({ where: { id: { in: userIds }, projectCityId: effectiveProjectCityId }, select: { id: true } })
         const scopedSet = new Set<string>(scopedUsers.map((u) => u.id))
         const outOfScope = userIds.filter((id) => !scopedSet.has(id))
         if (outOfScope.length) {
@@ -491,8 +552,8 @@ class LocationController {
         }
       })
 
-      // Emit realtime event to city listeners
-      emitToCity(address.cityId, 'location:keys:changed', {
+      // Emit realtime event to project-city listeners
+      emitToProjectCity(address.projectCityId, 'location:keys:changed', {
         addressId,
         counts: summary,
         ts: new Date().toISOString(),

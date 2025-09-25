@@ -8,14 +8,15 @@ export interface User {
   lastName: string
   role: UserRole
   isActive: boolean
-  cityId?: string
+  // Tenant scope (Project + City)
+  projectCityId?: string
+  projectId?: string
   createdAt: Date
   updatedAt: Date
   lastLoginAt?: Date
 }
 
 export enum UserRole {
-  SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
   SUPERVISOR = 'SUPERVISOR',
   USER = 'USER'
@@ -42,7 +43,8 @@ export interface UpdateUserRequest {
 export interface LoginRequest {
   username: string
   password: string
-  cityId: string
+  projectId?: string
+  cityName?: string
 }
 
 export interface LoginResponse {
@@ -157,7 +159,6 @@ export interface AccessLog {
   rfidKeyId?: string
   lock: Lock
   lockId: string
-  cityId?: string
 }
 
 export enum AccessType {
@@ -256,7 +257,7 @@ export interface AccessLogQuery extends PaginationQuery {
   accessType?: AccessType
   startDate?: string
   endDate?: string
-  cityId?: string
+  projectCityId?: string
 }
 
 export interface AuditLogQuery extends PaginationQuery {
@@ -271,12 +272,11 @@ export interface UserQuery extends PaginationQuery {
   role?: UserRole
   isActive?: boolean
   search?: string
-  cityId?: string
+  projectCityId?: string
 }
 
 export interface LockQuery extends PaginationQuery {
   addressId?: string
-  cityId?: string
   isActive?: boolean
   isOnline?: boolean
   lockType?: LockType
@@ -320,6 +320,9 @@ export interface JWTPayload {
   userId: string
   email: string
   role: UserRole
+  // Tenant claims (project + city)
+  projectCityId?: string
+  projectId?: string
   // For refresh tokens we include a unique token id (jti)
   jti?: string
   iat?: number
@@ -345,6 +348,46 @@ export interface DashboardStats {
     successful: number
     failed: number
   }>
+}
+
+// Notification service types
+export interface NotificationTemplate {
+  id: string
+  name: string
+  type: 'EMAIL' | 'SMS'
+  subject?: string
+  body: string
+  isActive: boolean
+}
+
+export interface SendNotificationRequest {
+  to: string
+  templateName: string
+  variables?: Record<string, any>
+}
+
+export interface TwoFactorChallenge {
+  id: string
+  userId: string
+  codeHash: string
+  expiresAt: Date
+  attempts: number
+  maxAttempts: number
+  method: 'sms' | 'totp'
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface TwoFactorVerifyRequest {
+  challengeId: string
+  code: string
+}
+
+export interface TwoFactorChallengeResponse {
+  challengeId: string
+  method: 'sms'
+  maskedPhone: string
+  expiresIn: number
 }
 
 // Export all types from Prisma as well
