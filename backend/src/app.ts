@@ -14,6 +14,7 @@ import auditRoutes from './routes/audit.routes'
 import projectRoutes from './routes/project.routes'
 import locationRoutes from './routes/location.routes'
 import addressRoutes from './routes/address.routes'
+import deviceRoutes from './routes/device.routes'
 import simRoutes from './routes/sim.routes'
 
 // Load environment variables
@@ -45,6 +46,7 @@ app.use('/api/audit', auditRoutes)
 app.use('/api/project', projectRoutes)
 app.use('/api/location', locationRoutes)
 app.use('/api/address', addressRoutes)
+app.use('/api/device', deviceRoutes)
 // Dev/test-only simulation routes
 if (process.env.ENABLE_SIM_ROUTES === 'true') {
   app.use('/api/sim', simRoutes)

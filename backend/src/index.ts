@@ -2,6 +2,7 @@ import http from 'http'
 import app from './app'
 import { startKeyExpiryJob } from './jobs/keyExpiry.job'
 import { startRefreshCleanupJob } from './jobs/refreshCleanup.job'
+import DeviceMonitoringService from './services/deviceMonitoring.service'
 import logger from './lib/logger'
 import { initWebSocket } from './lib/ws'
 
@@ -18,5 +19,10 @@ server.listen(port, () => {
     logger.info('Key expiry job started')
     startRefreshCleanupJob()
     logger.info('Refresh token cleanup job started')
+    
+    // Start device monitoring service
+    const deviceMonitoringInterval = parseInt(process.env.DEVICE_MONITORING_INTERVAL_MS || '300000') // 5 minutes default
+    DeviceMonitoringService.start(deviceMonitoringInterval)
+    logger.info('Device monitoring service started')
   }
 })

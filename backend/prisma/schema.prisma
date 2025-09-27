@@ -86,6 +86,7 @@ model Location {
   projectCity   ProjectCity? @relation(fields: [projectCityId], references: [id])
   address     Address   @relation(fields: [addressId], references: [id])
   locks       Lock[]
+  devices     Device[]
 
   @@unique([name, addressId], map: "uq_locations_name_address")
   @@map("locations")
@@ -97,8 +98,8 @@ model Lock {
   id          String           @id @default(cuid())
   name        String
   description String?
-  deviceId    String           @unique
-  secretKey   String
+  deviceId    String           @unique // Legacy field - will be deprecated
+  secretKey   String           // Legacy field - will be deprecated
   lockType    LockType         @default(DOOR)
   isActive    Boolean          @default(true)
   isOnline    Boolean          @default(false)
@@ -106,17 +107,21 @@ model Lock {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   locationId  String
+  // New device relationship
+  hardwareDeviceID String?
   // Tenant scope (Project + City)
   projectCityId String?
   projectCity   ProjectCity?   @relation(fields: [projectCityId], references: [id])
   accessLogs  AccessLog[]
   location    Location         @relation(fields: [locationId], references: [id])
   permissions UserPermission[]
+  hardwareDevice Device?      @relation("DeviceLocks", fields: [hardwareDeviceID], references: [id])
 
   @@map("locks")
   @@index([locationId], map: "idx_locks_location")
   @@index([isActive, isOnline], map: "idx_locks_active_online")
   @@index([projectCityId], map: "idx_locks_project_city")
+  @@index([hardwareDeviceID], map: "idx_locks_device")
 }
 
 model RFIDKey {
@@ -219,6 +224,7 @@ model ProjectCity {
   permissions UserPermission[]
   accessLogs  AccessLog[]
   rfidKeys    RFIDKey[]
+  devices     Device[]
 
   @@unique([projectId, cityId], map: "uq_project_cities_project_city")
   @@index([projectId], map: "idx_project_cities_project")
@@ -331,6 +337,20 @@ enum NotificationType {
   WEBHOOK
 }
 
+enum DeviceType {
+  RFID_READER
+  LOCK_CONTROLLER
+  GATEWAY
+  SENSOR
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  ERROR
+}
+
 // Refresh tokens for rotation and revocation
 model RefreshToken {
   id            String   @id @default(cuid())
@@ -348,4 +368,81 @@ model RefreshToken {
   @@index([userId, isRevoked], map: "idx_refresh_tokens_user_revoked")
   @@index([expiresAt], map: "idx_refresh_tokens_expires")
   @@map("refresh_tokens")
+}
+
+// Hardware Device Management
+model Device {
+  id               String           @id @default(cuid())
+  name             String
+  deviceId         String           @unique
+  secretKey        String
+  deviceType       DeviceType       @default(RFID_READER)
+  status           DeviceStatus     @default(ACTIVE)
+  firmwareVersion  String?
+  ipAddress        String?
+  macAddress       String?
+  isOnline         Boolean          @default(false)
+  lastSeen         DateTime?
+  lastPing         DateTime?
+  batteryLevel     Int?             // 0-100 percentage
+  signalStrength   Int?             // -100 to 0 dBm or 0-100 percentage
+  errorCount       Int              @default(0)
+  pingInterval     Int              @default(300) // seconds
+  configuration    Json?            // Device-specific configuration
+  metadata         Json?            // Additional device metadata
+  locationId       String?
+  projectCityId    String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  
+  // Relations
+  location         Location?        @relation(fields: [locationId], references: [id])
+  projectCity      ProjectCity?     @relation(fields: [projectCityId], references: [id])
+  locks            Lock[]           @relation("DeviceLocks")
+  commands         DeviceCommand[]
+  healthMetrics    DeviceHealthMetric[]
+
+  @@map("devices")
+  @@index([status], map: "idx_devices_status")
+  @@index([isOnline], map: "idx_devices_online")
+  @@index([locationId], map: "idx_devices_location")
+  @@index([projectCityId], map: "idx_devices_project_city")
+  @@index([deviceType], map: "idx_devices_type")
+}
+
+model DeviceCommand {
+  id          String     @id @default(cuid())
+  deviceId    String
+  command     String
+  parameters  Json?
+  status      String     @default("PENDING") // PENDING, SENT, EXECUTED, FAILED
+  sentAt      DateTime?
+  executedAt  DateTime?
+  response    Json?
+  error       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Relations
+  device      Device     @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("device_commands")
+  @@index([deviceId], map: "idx_device_commands_device")
+  @@index([status], map: "idx_device_commands_status")
+}
+
+model DeviceHealthMetric {
+  id         String   @id @default(cuid())
+  deviceId   String
+  metricType String   // "battery", "signal_strength", "response_time", "error_rate", etc.
+  value      Float
+  unit       String?  // "percentage", "dBm", "ms", etc.
+  timestamp  DateTime @default(now())
+  
+  // Relations
+  device     Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("device_health_metrics")
+  @@index([deviceId], map: "idx_device_health_device")
+  @@index([timestamp], map: "idx_device_health_timestamp")
 }

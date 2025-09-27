@@ -390,5 +390,127 @@ export interface TwoFactorChallengeResponse {
   expiresIn: number
 }
 
+// Device Management Types
+export enum DeviceType {
+  RFID_READER = 'RFID_READER',
+  LOCK_CONTROLLER = 'LOCK_CONTROLLER',
+  GATEWAY = 'GATEWAY',
+  SENSOR = 'SENSOR'
+}
+
+export enum DeviceStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  MAINTENANCE = 'MAINTENANCE',
+  ERROR = 'ERROR'
+}
+
+export interface Device {
+  id: string
+  name: string
+  deviceId: string
+  secretKey: string
+  deviceType: DeviceType
+  status: DeviceStatus
+  firmwareVersion?: string
+  ipAddress?: string
+  macAddress?: string
+  isOnline: boolean
+  lastSeen?: Date
+  lastPing?: Date
+  batteryLevel?: number
+  signalStrength?: number
+  errorCount: number
+  pingInterval: number
+  configuration?: any
+  metadata?: any
+  locationId?: string
+  projectCityId?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface CreateDeviceRequest {
+  name: string
+  deviceId: string
+  deviceType?: DeviceType
+  locationId?: string
+  ipAddress?: string
+  macAddress?: string
+  configuration?: any
+  metadata?: any
+}
+
+export interface UpdateDeviceRequest {
+  name?: string
+  status?: DeviceStatus
+  firmwareVersion?: string
+  ipAddress?: string
+  macAddress?: string
+  batteryLevel?: number
+  signalStrength?: number
+  pingInterval?: number
+  configuration?: any
+  metadata?: any
+  locationId?: string
+}
+
+export interface DeviceRegistrationRequest {
+  deviceId: string
+  secretKey: string
+  deviceType: DeviceType
+  name: string
+  firmwareVersion?: string
+  ipAddress?: string
+  macAddress?: string
+  locationId?: string
+}
+
+export interface DeviceCommand {
+  id: string
+  deviceId: string
+  command: string
+  parameters?: any
+  status: 'PENDING' | 'SENT' | 'EXECUTED' | 'FAILED'
+  sentAt?: Date
+  executedAt?: Date
+  response?: any
+  error?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface CreateDeviceCommandRequest {
+  deviceId: string
+  command: string
+  parameters?: any
+}
+
+export interface DeviceHealthMetric {
+  id: string
+  deviceId: string
+  metricType: string
+  value: number
+  unit?: string
+  timestamp: Date
+}
+
+export interface DevicePingRequest {
+  deviceId: string
+  batteryLevel?: number
+  signalStrength?: number
+  firmwareVersion?: string
+  status?: DeviceStatus
+  metadata?: any
+}
+
+export interface DeviceCommandResponse {
+  commandId: string
+  success: boolean
+  response?: any
+  error?: string
+  executedAt: Date
+}
+
 // Export all types from Prisma as well
 export * from '@prisma/client'

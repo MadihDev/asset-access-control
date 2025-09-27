@@ -8,19 +8,57 @@ class AccessController {
   async logAccessAttempt(req: Request, res: Response): Promise<void> {
     try {
       const attemptData: AccessAttemptRequest = req.body
+      
+      // Add device information if authenticated device made the request
+      if (req.device) {
+        attemptData.deviceInfo = {
+          ...attemptData.deviceInfo,
+          deviceId: req.device.deviceId,
+          deviceType: req.device.deviceType,
+          firmwareVersion: req.device.firmwareVersion,
+          batteryLevel: req.device.batteryLevel,
+          signalStrength: req.device.signalStrength
+        }
+      }
+
       const accessLog = await AccessService.logAccessAttempt(attemptData)
 
-      res.status(200).json({
+      // Return device-friendly response
+      const response = {
         success: true,
-        data: accessLog,
-        message: 'Access attempt logged successfully'
-      })
+        data: {
+          id: accessLog.id,
+          result: accessLog.result,
+          timestamp: accessLog.timestamp,
+          // Device-specific information
+          accessGranted: accessLog.result === 'GRANTED',
+          lockAction: accessLog.result === 'GRANTED' ? 'UNLOCK' : 'DENY',
+          message: this.getAccessResultMessage(accessLog.result)
+        }
+      }
+
+      res.status(200).json(response)
     } catch (error) {
       res.status(400).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to log access attempt'
       })
     }
+  }
+
+  private getAccessResultMessage(result: string): string {
+    const messages: Record<string, string> = {
+      'GRANTED': 'Access granted',
+      'DENIED_INVALID_CARD': 'Invalid card',
+      'DENIED_EXPIRED_CARD': 'Card expired',
+      'DENIED_NO_PERMISSION': 'No permission',
+      'DENIED_INACTIVE_USER': 'User inactive',
+      'DENIED_INACTIVE_LOCK': 'Lock inactive',
+      'DENIED_TIME_RESTRICTION': 'Outside allowed time',
+      'ERROR_DEVICE_OFFLINE': 'Device offline',
+      'ERROR_SYSTEM_FAILURE': 'System error'
+    }
+    return messages[result] || 'Access denied'
   }
 
   async getAccessLogs(req: Request, res: Response): Promise<void> {

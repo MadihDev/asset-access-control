@@ -2,6 +2,7 @@ import { Router } from 'express'
 import LockController from '../controllers/lock.controller'
 import AccessController from '../controllers/access.controller'
 import { authenticateToken, requireAdmin, requireManagerOrAbove } from '../middleware/auth.middleware'
+import { authenticateDevice, requireActiveDevice, deviceRateLimit, logDeviceActivity } from '../middleware/device.middleware'
 import { 
   validateAccessAttempt,
   validateAccessLogQuery
@@ -13,8 +14,32 @@ import {
 
 const router = Router()
 
-// Public endpoint for RFID devices
-router.post('/access-attempt', validateAccessAttempt, AccessController.logAccessAttempt)
+// Enhanced access attempt endpoint - supports both device authentication and legacy public access
+// Device authentication is preferred but not required for backward compatibility
+router.post('/access-attempt', 
+  deviceRateLimit(60000, 200), // 200 attempts per minute for devices
+  // Optional device authentication - if headers are present, authenticate
+  (req, res, next) => {
+    const deviceId = req.headers['x-device-id']
+    const secretKey = req.headers['x-device-secret']
+    
+    if (deviceId && secretKey) {
+      // Device authentication provided - use device middleware
+      return authenticateDevice(req, res, (err) => {
+        if (err) return next(err)
+        return requireActiveDevice(req, res, (err2) => {
+          if (err2) return next(err2)
+          return logDeviceActivity(req, res, next)
+        })
+      })
+    } else {
+      // No device authentication - proceed with legacy public access
+      next()
+    }
+  },
+  validateAccessAttempt, 
+  AccessController.logAccessAttempt
+)
 
 // Protected routes
 router.use(authenticateToken)
