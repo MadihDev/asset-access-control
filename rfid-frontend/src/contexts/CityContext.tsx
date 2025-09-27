@@ -23,6 +23,9 @@ export const CityProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refresh = useCallback(async () => {
     try {
       setLoading(true)
+      // Note: CityContext is deprecated in favor of TenantContext for project-city mode
+      // This is maintained for backward compatibility only
+      console.warn('CityContext is deprecated - use TenantContext instead')
       const { data } = await api.get('/api/city')
       setCities(Array.isArray(data?.data) ? data.data : [])
     } catch {

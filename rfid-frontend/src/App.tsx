@@ -12,11 +12,11 @@ import { useAuth } from './hooks/useAuth'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { ROLES } from './utils/rbac'
 import { useWebSocket } from './hooks/useWebSocket'
-import { useCity } from './contexts/CityContext'
+import { useTenantScope } from './hooks/useTenantScope'
 
 function App() {
   const { user, loading } = useAuth()
-  const { selectedCityId } = useCity()
+  const { selectedCityId } = useTenantScope()
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
   useWebSocket(!!user && !!token, token, selectedCityId)
 
@@ -47,7 +47,7 @@ function App() {
             <Route
               path="/users"
               element={
-                <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <ProtectedRoute roles={[ROLES.ADMIN]}>
                   <UserManagement user={user} />
                 </ProtectedRoute>
               }
@@ -55,7 +55,7 @@ function App() {
             <Route
               path="/access-logs"
               element={
-                <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
+                <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERVISOR]}>
                   <AccessLogs />
                 </ProtectedRoute>
               }
@@ -63,7 +63,7 @@ function App() {
             <Route
               path="/locks"
               element={
-                <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
+                <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERVISOR]}>
                   <Locks user={user} />
                 </ProtectedRoute>
               }
@@ -71,7 +71,7 @@ function App() {
             <Route
               path="/locations"
               element={
-                <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
+                <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERVISOR]}>
                   <Locations />
                 </ProtectedRoute>
               }
@@ -79,7 +79,7 @@ function App() {
             <Route
               path="/audit-logs"
               element={
-                <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR]}>
+                <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERVISOR]}>
                   <AuditLogs />
                 </ProtectedRoute>
               }
@@ -87,7 +87,7 @@ function App() {
             <Route
               path="/settings"
               element={
-                <ProtectedRoute roles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <ProtectedRoute roles={[ROLES.ADMIN]}>
                   <Settings user={user} />
                 </ProtectedRoute>
               }

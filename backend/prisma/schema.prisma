@@ -282,7 +282,6 @@ model TwoFactorChallenge {
 }
 
 enum UserRole {
-  SUPER_ADMIN
   ADMIN
   SUPERVISOR
   USER

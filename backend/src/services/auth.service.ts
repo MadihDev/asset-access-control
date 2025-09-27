@@ -25,10 +25,15 @@ class AuthService {
     let resolvedProjectCityId: string | undefined = undefined
 
     if (projectId && cityName) {
-      // Find projectCity first
+      // Find projectCity first - look for project by slug or name
       const projectCity = await prisma.projectCity.findFirst({
         where: {
-          project: { name: projectId }, // projectId is project name for now
+          project: { 
+            OR: [
+              { slug: projectId },
+              { name: projectId }
+            ]
+          },
           city: { name: cityName }
         },
         include: { project: true, city: true }

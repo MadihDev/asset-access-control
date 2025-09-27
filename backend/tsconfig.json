@@ -7,12 +7,15 @@
     "strict": true,
     "skipLibCheck": true,
     "types": ["node", "jest"],
-    "outDir": "dist"
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
   },
-  "include": ["src", "prisma", "test-*.ts"],
+  "include": ["src", "prisma", "tests", "test-*.ts"],
+  "exclude": ["node_modules", "dist", "test-tree-quick.ts"],
   "ts-node": {
     "compilerOptions": {
-      "types": ["node"]
+      "types": ["node", "jest"]
     }
   }
 }

@@ -1,12 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { useTenant } from '../contexts/TenantContext'
 import { hasAnyRole, ROLES } from '../utils/rbac'
 
 const Navigation: React.FC<{ user: { id: string; email: string; firstName: string; lastName: string; role: string } }> = ({ user }) => {
   const { logout } = useAuth()
-  const { mode, projects, cities, selection, setSelection } = useTenant()
+
   const location = useLocation()
   const [wsConnected, setWsConnected] = useState<boolean>(false)
 
@@ -15,10 +14,10 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
   }
 
   // Role-based access control using RBAC utilities
-  const canAccessUserManagement = hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN])
-  const canAccessSettings = hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR])
-  const canAccessLocks = hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR])
-  const canAccessAudit = hasAnyRole(user, [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.SUPERVISOR])
+  const canAccessUserManagement = hasAnyRole(user, [ROLES.ADMIN])
+  const canAccessSettings = hasAnyRole(user, [ROLES.ADMIN, ROLES.SUPERVISOR])
+  const canAccessLocks = hasAnyRole(user, [ROLES.ADMIN, ROLES.SUPERVISOR])
+  const canAccessAudit = hasAnyRole(user, [ROLES.ADMIN, ROLES.SUPERVISOR])
 
   useEffect(() => {
     const onConnected = () => setWsConnected(true)
@@ -141,48 +140,7 @@ const Navigation: React.FC<{ user: { id: string; email: string; firstName: strin
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
-            {/* City/Tenant selector for SUPER_ADMIN */}
-            {hasAnyRole(user, [ROLES.SUPER_ADMIN]) && (
-              <div className="hidden md:flex items-center space-x-2">
-                {mode === 'project-city' && (
-                  <>
-                    <select
-                      className="px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700"
-                      value={selection.project || ''}
-                      onChange={(e) => setSelection({ ...selection, project: e.target.value || undefined, cityId: undefined })}
-                    >
-                      <option value="">Select Project</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.slug || p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      className="px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700"
-                      value={selection.cityId || ''}
-                      onChange={(e) => setSelection({ ...selection, cityId: e.target.value || undefined })}
-                      disabled={!selection.project}
-                    >
-                      <option value="">Select City</option>
-                      {cities.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </>
-                )}
-                {mode === 'city-only' && (
-                  <select
-                    className="px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700"
-                    value={selection.cityId || ''}
-                    onChange={(e) => setSelection({ cityId: e.target.value || undefined })}
-                  >
-                    <option value="">All Cities</option>
-                    {cities.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            )}
+
             {/* User Info */}
             <div className="hidden md:flex items-center space-x-2">
               {/* WebSocket status indicator */}

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import PermissionController from '../controllers/permission.controller'
 import { authenticateToken, requireManagerOrAbove } from '../middleware/auth.middleware'
 import { validateCreatePermission, validateUpdatePermission } from '../middleware/validation.middleware'
+import { validatePermissionAssignment } from '../middleware/location.middleware'
 
 const router = Router()
 
@@ -11,7 +12,7 @@ router.use(authenticateToken, requireManagerOrAbove)
 router.get('/', PermissionController.list)
 
 // Assign or upsert permission
-router.post('/', validateCreatePermission, PermissionController.assign)
+router.post('/', validateCreatePermission, validatePermissionAssignment, PermissionController.assign)
 
 // Update permission by id
 router.put('/:id', validateUpdatePermission, PermissionController.update)

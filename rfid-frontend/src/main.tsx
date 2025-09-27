@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext'
-import { CityProvider } from './contexts/CityContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { TenantProvider } from './contexts/TenantContext'
 import { ToastViewport } from './components/Toast'
@@ -17,10 +16,8 @@ createRoot(document.getElementById('root')!).render(
       <ToastProvider>
         <AuthProvider>
           <TenantProvider>
-            <CityProvider>
-              <App />
-              <ToastViewport />
-            </CityProvider>
+            <App />
+            <ToastViewport />
           </TenantProvider>
         </AuthProvider>
       </ToastProvider>

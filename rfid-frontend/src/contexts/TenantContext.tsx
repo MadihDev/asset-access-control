@@ -42,7 +42,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   })
 
-  const setSelection = (sel: TenantSelection) => {
+  const setSelection = useCallback((sel: TenantSelection) => {
     setSelectionState(sel)
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sel))
@@ -50,19 +50,27 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // ignore persist errors (private mode, storage full)
       console.warn('Tenant selection persist failed', e)
     }
-  }
+  }, [])
 
   const refresh = useCallback(async () => {
     if (mode !== 'project-city') return
     try {
       const projs = await fetchProjects()
       setProjects(projs)
+      
+      // Auto-select first project if none is selected
       const projKey = selection.project || projs[0]?.slug || projs[0]?.id
+      
       if (projKey) {
         const cs = await fetchCitiesByProject(projKey)
         setCities(cs)
+        
+        // Auto-update selection if no project was previously selected
+        if (!selection.project && projs.length > 0) {
+          setSelection({ project: projs[0].slug || projs[0].id })
+        }
         // If current city selection is not in the new list, clear it
-        if (selection.cityId && !cs.some((c) => c.id === selection.cityId)) {
+        else if (selection.cityId && !cs.some((c) => c.id === selection.cityId)) {
           setSelection({ project: projKey })
         }
       } else {
@@ -74,7 +82,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error('Tenant refresh failed', error)
       }
     }
-  }, [mode, selection.project, selection.cityId])
+  }, [mode, selection.project, selection.cityId, setSelection])
 
   useEffect(() => {
     refresh().catch((e) => console.warn('Tenant refresh failed', e))
@@ -82,7 +90,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const value = useMemo(
     () => ({ mode, projects, cities, selection, setSelection, refresh }),
-    [mode, projects, cities, selection, refresh]
+    [mode, projects, cities, selection, setSelection, refresh]
   )
 
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>

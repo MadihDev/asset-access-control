@@ -1,7 +1,6 @@
 import type { AuthUser } from '../contexts/auth-context'
 
 export const ROLES = {
-  SUPER_ADMIN: 'SUPER_ADMIN',
   ADMIN: 'ADMIN',
   SUPERVISOR: 'SUPERVISOR',
   USER: 'USER',

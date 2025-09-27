@@ -14,13 +14,23 @@ interface User {
   isActive: boolean
 }
 
-interface Address {
+interface Location {
   id: string
-  street: string
-  number: string
-  city: {
+  name: string
+  description?: string
+  addressId: string
+  address: {
     id: string
-    name: string
+    street: string
+    number: string
+    zipCode: string
+    city: {
+      id: string
+      name: string
+    }
+  }
+  _count?: {
+    locks: number
   }
 }
 
@@ -30,13 +40,7 @@ interface Lock {
   lockType?: string
   isActive: boolean
   description?: string
-  address?: {
-    street?: string
-    number?: string
-    city?: {
-      name: string
-    }
-  }
+  locationId?: string
 }
 
 interface UserPermission {
@@ -49,14 +53,14 @@ interface UserPermission {
 
 interface LocationUserPermissionModalProps {
   user: User
-  address: Address
+  location: Location
   onClose: () => void
   onSuccess: () => void
 }
 
 export default function LocationUserPermissionModal({ 
   user, 
-  address, 
+  location, 
   onClose, 
   onSuccess 
 }: LocationUserPermissionModalProps) {
@@ -66,8 +70,8 @@ export default function LocationUserPermissionModal({
   
   // Create query keys for invalidation
   const userPermissionsQueryKey = useTenantQueryKey('user-permissions', { userId: user.id })
-  const locationLocksQueryKey = useTenantQueryKey('location-locks', { addressId: address.id })
-  const locationUsersQueryKey = useTenantQueryKey('location-users', { addressId: address.id })
+  const locationLocksQueryKey = useTenantQueryKey('location-locks', { locationId: location.id })
+  const locationUsersQueryKey = useTenantQueryKey('location-users', { locationId: location.id })
   const usersQueryKey = useTenantQueryKey('users')
 
   // Fetch user's current permissions
@@ -88,7 +92,7 @@ export default function LocationUserPermissionModal({
   const locationLocksQuery = useQuery({
     queryKey: locationLocksQueryKey,
     queryFn: async () => {
-      const response = await api.get(`/api/location/${address.id}/locks`, { 
+      const response = await api.get(`/api/location/${location.id}/locks`, { 
         params: tenantParams 
       })
       return response.data?.data || []
@@ -182,7 +186,10 @@ export default function LocationUserPermissionModal({
       <div className="max-h-[70vh] overflow-hidden">
         <div className="mb-4">
           <p className="text-sm text-gray-500">
-            {user.firstName} {user.lastName} • {address.street} {address.number}
+            {user.firstName} {user.lastName} • {location.name}
+          </p>
+          <p className="text-xs text-gray-400">
+            {location.address.street} {location.address.number}, {location.address.city.name}
           </p>
         </div>
         {/* Content */}

@@ -86,12 +86,12 @@ const Login: React.FC = () => {
       
       if (mode === 'project-city' && formData.project) {
         // New project-city mode
-        const projectName = projects.find(p => (p.slug || p.id) === formData.project)?.name
-        const cityName = cities.find(c => c.id === formData.cityId)?.name
+        const selectedProject = projects.find(p => (p.slug || p.id) === formData.project)
+        const selectedCity = cities.find(c => c.id === formData.cityId)
         
-        if (projectName && cityName) {
-          credentials.projectId = projectName
-          credentials.cityName = cityName
+        if (selectedProject && selectedCity) {
+          credentials.projectId = selectedProject.slug || selectedProject.id // Use slug or ID, not name
+          credentials.cityName = selectedCity.name
           credentials.cityId = formData.cityId // Also send cityId for validation
         } else {
           throw new Error('Invalid project or city selection')
@@ -380,18 +380,36 @@ const Login: React.FC = () => {
           <div className="mt-6 p-4 bg-gray-50 rounded-md">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</h3>
             {mode === 'project-city' ? (
-              <div className="text-xs text-gray-600 space-y-1">
-                <div><strong>PerfectIT Admin:</strong> username=perfectitadmin, password=password123, project=PerfectIT Solutions, city=Amsterdam</div>
-                <div><strong>PerfectIT User:</strong> username=perfectituser, password=password123, project=PerfectIT Solutions, city=Rotterdam</div>
-                <div><strong>Acme Admin:</strong> username=acmeadmin, password=password123, project=Acme Corporation, city=Amsterdam</div>
-                <div><strong>Acme User:</strong> username=acmeuser, password=password123, project=Acme Corporation, city=Utrecht</div>
+              <div className="text-xs text-gray-600 space-y-2">
+                <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-400">
+                  <div className="font-semibold text-blue-800 mb-1">🇳🇱 PerfectIT Solutions</div>
+                  <div><strong>Amsterdam Admin:</strong> username=amsterdamadmin, password=Password123!, project=perfectit-solutions, city=Amsterdam</div>
+                  <div><strong>Rotterdam Admin:</strong> username=rotterdamadmin, password=Password123!, project=perfectit-solutions, city=Rotterdam</div>
+                </div>
+                <div className="bg-green-50 p-2 rounded border-l-2 border-green-400">
+                  <div className="font-semibold text-green-800 mb-1">🏢 Acme Corporation</div>
+                  <div><strong>Acme Admin:</strong> username=acmeadmin, password=password123, project=Acme Corporation, city=Amsterdam</div>
+                  <div><strong>Acme User:</strong> username=acmeuser, password=password123, project=Acme Corporation, city=Utrecht</div>
+                </div>
+                <div className="mt-2 text-xs text-gray-500 italic">
+                  ℹ️ All usernames are now alphanumeric-only (no underscores or special characters)
+                </div>
               </div>
             ) : (
-              <div className="text-xs text-gray-600 space-y-1">
-                <div><strong>PerfectIT Admin:</strong> username=perfectitadmin, password=password123, city=Amsterdam</div>
-                <div><strong>PerfectIT User:</strong> username=perfectituser, password=password123, city=Rotterdam</div>
-                <div><strong>Acme Admin:</strong> username=acmeadmin, password=password123, city=Amsterdam</div>
-                <div><strong>Acme User:</strong> username=acmeuser, password=password123, city=Utrecht</div>
+              <div className="text-xs text-gray-600 space-y-2">
+                <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-400">
+                  <div className="font-semibold text-blue-800 mb-1">🇳🇱 PerfectIT Solutions</div>
+                  <div><strong>Amsterdam Admin:</strong> username=amsterdamadmin, password=Password123!, city=Amsterdam</div>
+                  <div><strong>Rotterdam Admin:</strong> username=rotterdamadmin, password=Password123!, city=Rotterdam</div>
+                </div>
+                <div className="bg-green-50 p-2 rounded border-l-2 border-green-400">
+                  <div className="font-semibold text-green-800 mb-1">🏢 Acme Corporation</div>
+                  <div><strong>Acme Admin:</strong> username=acmeadmin, password=password123, city=Amsterdam</div>
+                  <div><strong>Acme User:</strong> username=acmeuser, password=password123, city=Utrecht</div>
+                </div>
+                <div className="mt-2 text-xs text-gray-500 italic">
+                  ℹ️ All usernames are now alphanumeric-only (no underscores or special characters)
+                </div>
               </div>
             )}
           </div>

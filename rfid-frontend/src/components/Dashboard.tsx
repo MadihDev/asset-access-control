@@ -33,6 +33,15 @@ interface AccessLog {
   } | null
   lock: {
     name: string
+    location?: {
+      id: string
+      name: string
+      address?: {
+        street: string
+        number: string
+        city: { name: string }
+      }
+    }
   }
   result: string
   accessType: string
@@ -51,6 +60,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [simulatingAccess, setSimulatingAccess] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState<string>('all')
   const { tenantParams } = useTenantScope()
 
   const fetchStats = useCallback(async () => {
@@ -79,17 +89,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       const randomAccessType = accessTypes[Math.floor(Math.random() * accessTypes.length)]
       const randomResult = results[Math.floor(Math.random() * results.length)]
       
-      // Create a test access log
+      // Create a test access log with tenant parameters
       await api.post('/api/lock/access-logs/simulate', {
         accessType: randomAccessType,
         result: randomResult
+      }, { 
+        params: tenantParams 
       })
       
       // Refresh the dashboard to show the new access log
       await fetchStats()
     } catch (err) {
       console.error('Error simulating access attempt:', err)
-      setError('Failed to simulate access attempt')
+      const errorDetails = err instanceof Error ? err.message : 'Unknown error'
+      setError(`Failed to simulate access attempt: ${errorDetails}`)
     } finally {
       setSimulatingAccess(false)
     }
@@ -283,14 +296,43 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Access Logs</h2>
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
+            <h2 className="text-lg font-semibold text-gray-900">Recent Access Activity</h2>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label htmlFor="location-filter" className="text-sm text-gray-500">Filter by Location:</label>
+                <select
+                  id="location-filter"
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Locations</option>
+                  {Array.from(new Set(stats.recentAccessLogs
+                    .map(log => log.lock?.location?.name)
+                    .filter(name => name)
+                  )).map(locationName => (
+                    <option key={locationName} value={locationName}>
+                      {locationName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
         <div className="p-6">
-          {stats.recentAccessLogs.length === 0 ? (
+          {(() => {
+            const filteredLogs = selectedLocation === 'all' 
+              ? stats.recentAccessLogs 
+              : stats.recentAccessLogs.filter(log => log.lock?.location?.name === selectedLocation)
+            
+            return filteredLogs.length === 0 ? (
             <div className="text-center py-12">
               <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 5.5l3 3L15 10" />
@@ -312,6 +354,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                       User
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Lock
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -323,7 +368,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {stats.recentAccessLogs.map((log) => (
+                  {filteredLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-gray-50">
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -340,6 +385,25 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                           </svg>
                           <div className="text-sm text-gray-900">
                             {log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() : 'Unknown'}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <div className="text-sm">
+                            <div className="text-gray-900 font-medium">
+                              {log.lock?.location?.name || 'Unknown Location'}
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {log.lock?.location?.address ? 
+                                `${log.lock.location.address.street} ${log.lock.location.address.number}` : 
+                                'No address'
+                              }
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -380,9 +444,53 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 </tbody>
               </table>
             </div>
-          )}
+            )
+          })()}
         </div>
       </div>
+
+      {/* Real-time Location Monitoring */}
+      {stats.recentAccessLogs.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Real-time Location Status</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from(new Set(stats.recentAccessLogs
+              .map(log => log.lock?.location?.name)
+              .filter(name => name)
+            )).slice(0, 6).map(locationName => {
+              const locationLogs = stats.recentAccessLogs.filter(log => 
+                log.lock?.location?.name === locationName
+              )
+              const recentLog = locationLogs[0]
+              const successCount = locationLogs.filter(log => log.result === 'GRANTED').length
+              const totalCount = locationLogs.length
+              const successRate = totalCount > 0 ? (successCount / totalCount) * 100 : 0
+              
+              return (
+                <div key={locationName} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-gray-900">{locationName}</h4>
+                    <div className={`w-3 h-3 rounded-full ${
+                      recentLog?.result === 'GRANTED' ? 'bg-green-400' : 'bg-red-400'
+                    }`}></div>
+                  </div>
+                  <div className="text-xs text-gray-500 mb-2">
+                    Last activity: {recentLog ? formatTime(recentLog.timestamp) : 'No activity'}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600">
+                      Success Rate: {successRate.toFixed(0)}%
+                    </span>
+                    <span className="text-xs text-gray-600">
+                      {totalCount} attempt{totalCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Summary Stats */}
       {(stats.totalUsers > 0 || stats.totalLocks > 0) && (

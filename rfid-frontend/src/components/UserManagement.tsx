@@ -103,9 +103,9 @@ export default function UserManagement({ user }: UserManagementProps) {
   })
 
   // Permissions
-  const canCreateUsers = ['SUPER_ADMIN', 'ADMIN'].includes(user.role)
-  const canManageUsers = ['SUPER_ADMIN', 'ADMIN'].includes(user.role)
-  const canViewUsers = ['SUPER_ADMIN', 'ADMIN', 'SUPERVISOR'].includes(user.role)
+  const canCreateUsers = ['ADMIN'].includes(user.role)
+  const canManageUsers = ['ADMIN'].includes(user.role)
+  const canViewUsers = ['ADMIN', 'SUPERVISOR'].includes(user.role)
 
   // Toggle user active status mutation
   const toggleActiveMutation = useMutation({
@@ -189,8 +189,6 @@ export default function UserManagement({ user }: UserManagementProps) {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'SUPER_ADMIN':
-        return 'bg-purple-100 text-purple-800 border-purple-200'
       case 'ADMIN':
         return 'bg-red-100 text-red-800 border-red-200'
       case 'SUPERVISOR':
@@ -224,10 +222,8 @@ export default function UserManagement({ user }: UserManagementProps) {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
             <p className="mt-1 text-sm text-gray-600">
-              {user.role === 'SUPER_ADMIN' 
-                ? 'Manage users, roles, and permissions as super admin'
-                : user.role === 'SUPERVISOR'
-                ? 'Manage users, roles, and permissions as supervisor'
+              {user.role === 'SUPERVISOR'
+                ? 'View users and basic information as supervisor'
                 : 'Manage users, assign permissions, and control access to your system'
               }
             </p>
@@ -297,7 +293,6 @@ export default function UserManagement({ user }: UserManagementProps) {
               className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Roles</option>
-              <option value="SUPER_ADMIN">Super Admin</option>
               <option value="ADMIN">Admin</option>
               <option value="SUPERVISOR">Supervisor</option>
               <option value="USER">User</option>

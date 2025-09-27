@@ -113,7 +113,7 @@ export default function UserDetailsModal({ user, onClose, onSuccess, currentUser
   })
 
   // Permissions checking
-  const canEditUser = ['SUPER_ADMIN', 'ADMIN'].includes(loggedInUser.role)
+  const canEditUser = ['ADMIN'].includes(loggedInUser.role)
   const canManagePermissions = ['SUPER_ADMIN', 'ADMIN'].includes(loggedInUser.role)
   const canManageRfid = ['SUPER_ADMIN', 'ADMIN'].includes(loggedInUser.role)
 

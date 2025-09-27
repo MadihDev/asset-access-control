@@ -1,22 +1,35 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import api from '../services/api'
 import { useTenantScope } from '../hooks/useTenantScope'
 import { useAuth } from '../hooks/useAuth'
 import LocationUserPermissionModal from './Locations/LocationUserPermissionModal'
+import AddressTree from './Locations/AddressTree'
+
+import LocationSearch from './Locations/LocationSearch'
+import LocationManagementModal from './Locations/LocationManagementModal'
+import LockManagementModal from './Locations/LockManagementModal'
+import BulkLocationOperations from './Locations/BulkLocationOperations'
+import ConfirmationModal from './common/ConfirmationModal'
 import type { AxiosError } from 'axios'
 
-interface Address {
+interface Location {
   id: string
-  street: string
-  number: string
-  city: {
+  name: string
+  description?: string
+  addressId: string
+  address: {
     id: string
-    name: string
+    street: string
+    number: string
+    zipCode: string
+    city: {
+      id: string
+      name: string
+    }
   }
   _count?: {
     locks: number
-    users: number
-    keys: number
+    users?: number
   }
 }
 
@@ -27,6 +40,11 @@ interface User {
   email: string
   role: string
   isActive: boolean
+  accessType?: {
+    hasPermissions: boolean
+    hasActiveRfidKey: boolean
+    hasRecentAccess: boolean
+  }
   rfidKeys?: {
     id: string
     cardId: string
@@ -38,11 +56,23 @@ interface Lock {
   id: string
   name: string
   description?: string
-  isOnline: boolean
-  lockType?: string
+  deviceId: string
+  lockType: 'DOOR' | 'GATE' | 'CABINET' | 'ROOM'
+  isActive: boolean
+  isOnline?: boolean
+  locationId: string
   batteryLevel?: number
   _count?: {
     permissions: number
+  }
+  location?: {
+    id: string
+    name: string
+    address: {
+      street: string
+      number: string
+      city: { name: string }
+    }
   }
 }
 
@@ -55,12 +85,19 @@ interface RfidKey {
     lastName: string
     email: string
   }
-  assignedAt: string
+  issuedAt?: string
+  assignedAt?: string
+}
+
+interface FilterOptions {
+  showOfflineOnly: boolean
+  showLowBattery: boolean
+  sortBy: 'name' | 'status' | 'locks'
 }
 
 const Locations: React.FC = () => {
-  const [addresses, setAddresses] = useState<Address[]>([])
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null)
+  const [locations, setLocations] = useState<Location[]>([])
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
   const [activeTab, setActiveTab] = useState<'users' | 'locks' | 'keys'>('users')
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -68,16 +105,73 @@ const Locations: React.FC = () => {
   
   // Modal state
   const [permissionModalUser, setPermissionModalUser] = useState<User | null>(null)
+  const [locationModalOpen, setLocationModalOpen] = useState(false)
+  const [locationToEdit, setLocationToEdit] = useState<Location | null>(null)
+  const [lockModalOpen, setLockModalOpen] = useState(false)
+  const [lockToEdit, setLockToEdit] = useState<Lock | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [locationToDelete, setLocationToDelete] = useState<Location | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  
+  // Bulk operations state
+  const [bulkModalOpen, setBulkModalOpen] = useState(false)
   
   // Tab data
   const [users, setUsers] = useState<User[]>([])
   const [locks, setLocks] = useState<Lock[]>([])
   const [rfidKeys, setRfidKeys] = useState<RfidKey[]>([])
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    showOfflineOnly: false,
+    showLowBattery: false,
+    sortBy: 'name'
+  })
+  // const [viewMode, setViewMode] = useState<'tree' | 'grid'>('tree')
 
   const { tenantParams } = useTenantScope()
   const { user: authUser } = useAuth()
 
-  const fetchAddresses = useCallback(async () => {
+  // Get all available addresses for location creation
+  const [availableAddresses, setAvailableAddresses] = useState<{id: string, street: string, number: string, zipCode: string, city: {id: string, name: string}}[]>([])
+
+  // Filtered and sorted locations based on search and filters
+  const filteredLocations = useMemo(() => {
+    let filtered = locations
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(location => 
+        location.name.toLowerCase().includes(query) ||
+        location.description?.toLowerCase().includes(query) ||
+        location.address?.street?.toLowerCase().includes(query) ||
+        location.address?.city?.name?.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (filterOptions.sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'locks':
+          return (b._count?.locks || 0) - (a._count?.locks || 0)
+        case 'status': {
+          // Sort by address city, then by name
+          const cityCompare = (a.address?.city?.name || '').localeCompare(b.address?.city?.name || '')
+          return cityCompare !== 0 ? cityCompare : a.name.localeCompare(b.name)
+        }
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }, [locations, searchQuery, filterOptions])
+
+  const fetchLocations = useCallback(async () => {
     if (!authUser) {
       setError('Please log in to view locations')
       setLoading(false)
@@ -88,42 +182,37 @@ const Locations: React.FC = () => {
       setLoading(true)
       setError(null)
       
-      console.log('🏠 Fetching addresses with params:', tenantParams)
-      const { data } = await api.get('/api/address', { params: tenantParams })
-      console.log('✅ Addresses received:', data)
-      setAddresses(data.data || [])
+      console.log('🏠 Fetching locations with params:', tenantParams)
+      const { data } = await api.get('/api/location', { params: tenantParams })
+      console.log('✅ Locations received:', data)
+      setLocations(data.data || [])
     } catch (err) {
       const error = err as AxiosError<{ error?: string }>
-      console.error('❌ Error fetching addresses:', error)
-      setError(`Failed to load addresses: ${error.response?.data?.error || error.message}`)
+      console.error('❌ Error fetching locations:', error)
+      setError(`Failed to load locations: ${error.response?.data?.error || error.message}`)
     } finally {
       setLoading(false)
     }
   }, [authUser, tenantParams])
 
-  const fetchAddressDetails = useCallback(async (address: Address, tab: 'users' | 'locks' | 'keys') => {
-    if (!authUser || !address) return
+  const fetchLocationDetails = useCallback(async (location: Location, tab: 'users' | 'locks' | 'keys') => {
+    if (!authUser || !location) return
 
     try {
       setDetailLoading(true)
       
-      const params = {
-        ...tenantParams,
-        addressId: address.id
-      }
-
-      console.log(`🔍 Fetching ${tab} for address:`, address.id, params)
+      console.log(`🔍 Fetching ${tab} for location:`, location.id)
 
       if (tab === 'users') {
-        const { data } = await api.get(`/api/location/${address.id}/users`, { params: tenantParams })
+        const { data } = await api.get(`/api/location/${location.addressId}/users`, { params: tenantParams })
         console.log('✅ Users received:', data)
         setUsers(data.data || [])
       } else if (tab === 'locks') {
-        const { data } = await api.get(`/api/location/${address.id}/locks`, { params: tenantParams })
+        const { data } = await api.get(`/api/location/${location.id}/locks`, { params: tenantParams })
         console.log('✅ Locks received:', data)
         setLocks(data.data || [])
       } else if (tab === 'keys') {
-        const { data } = await api.get(`/api/location/${address.id}/keys`, { params: tenantParams })
+        const { data } = await api.get(`/api/location/${location.addressId}/keys`, { params: tenantParams })
         console.log('✅ RFID Keys received:', data)
         setRfidKeys(data.data || [])
       }
@@ -137,17 +226,17 @@ const Locations: React.FC = () => {
   }, [authUser, tenantParams])
 
   useEffect(() => {
-    fetchAddresses()
-  }, [fetchAddresses])
+    fetchLocations()
+  }, [fetchLocations])
 
   useEffect(() => {
-    if (selectedAddress) {
-      fetchAddressDetails(selectedAddress, activeTab)
+    if (selectedLocation) {
+      fetchLocationDetails(selectedLocation, activeTab)
     }
-  }, [selectedAddress, activeTab, fetchAddressDetails])
+  }, [selectedLocation, activeTab, fetchLocationDetails])
 
-  const handleAddressClick = (address: Address) => {
-    setSelectedAddress(address)
+  const handleLocationClick = (location: Location) => {
+    setSelectedLocation(location)
     setActiveTab('users') // Reset to first tab
     // Clear previous data
     setUsers([])
@@ -169,10 +258,105 @@ const Locations: React.FC = () => {
 
   const handlePermissionModalSuccess = () => {
     // Refresh the current tab data to reflect changes
-    if (selectedAddress) {
-      fetchAddressDetails(selectedAddress, activeTab)
+    if (selectedLocation) {
+      fetchLocationDetails(selectedLocation, activeTab)
     }
   }
+
+  // New handlers for enhanced functionality
+  const handleAddLocation = () => {
+    console.log('handleAddLocation called')
+    console.log('Current locationModalOpen state:', locationModalOpen)
+    setLocationToEdit(null)
+    setLocationModalOpen(true)
+    console.log('Setting locationModalOpen to true')
+  }
+
+  const handleEditLocation = (location: Location) => {
+    setLocationToEdit(location)
+    setLocationModalOpen(true)
+  }
+
+  const handleLocationModalSuccess = () => {
+    fetchLocations() // Refresh locations list
+    setLocationModalOpen(false)
+    setLocationToEdit(null)
+  }
+
+  const handleDeleteLocation = (location: Location) => {
+    setLocationToDelete(location)
+    setDeleteModalOpen(true)
+  }
+
+  // Lock management handlers
+  const handleAddLock = () => {
+    setLockToEdit(null)
+    setLockModalOpen(true)
+  }
+
+  const handleEditLock = (lock: Lock) => {
+    setLockToEdit(lock)
+    setLockModalOpen(true)
+  }
+
+  const handleLockModalSuccess = () => {
+    fetchLocations() // Refresh locations list
+    if (selectedLocation) {
+      fetchLocationDetails(selectedLocation, activeTab) // Refresh current tab
+    }
+    setLockModalOpen(false)
+    setLockToEdit(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!locationToDelete) return
+
+    setDeleteLoading(true)
+    try {
+      await api.delete(`/api/location/${locationToDelete.id}`, { params: tenantParams })
+      
+      // If we're deleting the currently selected location, clear selection
+      if (selectedLocation?.id === locationToDelete.id) {
+        setSelectedLocation(null)
+        setUsers([])
+        setLocks([])
+        setRfidKeys([])
+      }
+      
+      fetchLocations() // Refresh locations list
+      setDeleteModalOpen(false)
+      setLocationToDelete(null)
+    } catch (err) {
+      const axiosErr = err as AxiosError<{ error?: string }>
+      console.error('Delete location error:', err)
+      // You might want to show a toast error here
+      alert(`Failed to delete location: ${axiosErr.response?.data?.error || 'Unknown error'}`)
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const handleBulkModalSuccess = () => {
+    fetchLocations() // Refresh locations list
+  }
+
+  // Fetch available addresses for location creation
+  const fetchAddresses = useCallback(async () => {
+    try {
+      console.log('Fetching addresses with params:', tenantParams)
+      const { data } = await api.get('/api/address', { params: tenantParams })
+      console.log('Addresses loaded:', data.data || [])
+      setAvailableAddresses(data.data || [])
+    } catch (err) {
+      console.error('Failed to fetch addresses:', err)
+    }
+  }, [tenantParams])
+
+  useEffect(() => {
+    if (authUser) {
+      fetchAddresses()
+    }
+  }, [authUser, fetchAddresses])
 
   const getStatusIcon = (isActive: boolean, isOnline?: boolean) => {
     const isPositive = isOnline !== undefined ? isOnline : isActive
@@ -200,7 +384,7 @@ const Locations: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="text-red-600">{error}</div>
         <button 
-          onClick={fetchAddresses}
+          onClick={fetchLocations}
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           Retry
@@ -220,8 +404,11 @@ const Locations: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <h1 className="text-2xl font-bold text-gray-900">Locations</h1>
+            <span className="text-xs bg-yellow-100 px-2 py-1 rounded ml-3">
+              Modal: {locationModalOpen ? 'OPEN' : 'CLOSED'} | Addresses: {availableAddresses.length}
+            </span>
           </div>
-          <p className="text-gray-600 mb-4">Manage addresses and view associated users, locks, and keys</p>
+          <p className="text-gray-600 mb-4">Manage locations and view associated users, locks, and keys</p>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -231,102 +418,99 @@ const Locations: React.FC = () => {
         </div>
       </div>
 
+      {/* Search and Filter Controls */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <LocationSearch
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filterOptions={filterOptions}
+          onFilterChange={setFilterOptions}
+          totalCount={locations.length}
+          filteredCount={filteredLocations.length}
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Addresses List */}
+        {/* Locations Tree */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <h2 className="text-lg font-semibold text-gray-900">Addresses</h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <h2 className="text-lg font-semibold text-gray-900">Addresses & Locations</h2>
+                </div>
+                <button
+                  onClick={handleAddLocation}
+                  className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded border border-blue-200 hover:border-blue-300 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Location
+                </button>
               </div>
-              <div className="text-sm text-gray-500 mt-1">{(addresses || []).length} locations</div>
+              
+              <div className="text-sm text-gray-500 mt-3">
+                {filteredLocations.length} of {locations.length} locations
+              </div>
             </div>
             <div className="p-6">
-              {(addresses || []).length === 0 ? (
-                <div className="text-center py-8">
-                  <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <div className="text-gray-600 font-medium">No addresses found</div>
-                  <div className="text-gray-500 text-sm mt-1">
-                    Addresses will appear here when they are created
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {(addresses || []).map((address) => (
-                    <div
-                      key={address.id}
-                      onClick={() => handleAddressClick(address)}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
-                        selectedAddress?.id === address.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <h3 className="font-medium text-gray-900">
-                              {address.street} {address.number}
-                            </h3>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                            <span>{address.city?.name || 'Unknown City'}</span>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                              <span>{address._count?.users || 0} users</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V9a4 4 0 10-8 0v2m12 0a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h12z" />
-                              </svg>
-                              <span>{address._count?.locks || 0} locks</span>
-                            </div>
-                          </div>
-                        </div>
-                        <svg className="h-5 w-5 text-gray-400 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Address Tree View */}
+              <AddressTree
+                locations={filteredLocations}
+                selectedLocation={selectedLocation}
+                onLocationClick={handleLocationClick}
+                onAddLocation={handleAddLocation}
+                onEditLocation={handleEditLocation}
+                onDeleteLocation={handleDeleteLocation}
+                loading={loading}
+              />
             </div>
           </div>
         </div>
 
-        {/* Address Details */}
+        {/* Location Details */}
         <div className="lg:col-span-2">
-          {selectedAddress ? (
+          {selectedLocation ? (
             <div className="bg-white rounded-lg shadow-sm border">
               <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {selectedAddress.street} {selectedAddress.number}
-                    </h2>
-                    <p className="text-sm text-gray-500">{selectedAddress.city?.name || 'Unknown City'}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {selectedLocation.name}
+                      </h2>
+                      <p className="text-sm text-gray-500">
+                        {selectedLocation.address?.street} {selectedLocation.address?.number}, {selectedLocation.address?.city?.name || 'Unknown City'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleEditLocation(selectedLocation)}
+                      className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded border border-gray-200 hover:border-gray-300 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteLocation(selectedLocation)}
+                      className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded border border-red-200 hover:border-red-300 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete
+                    </button>
                   </div>
                 </div>
 
@@ -345,7 +529,7 @@ const Locations: React.FC = () => {
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        Users ({selectedAddress._count?.users || 0}){detailLoading && activeTab === 'users' && <span className="ml-1 text-xs">⟳</span>}
+                        Users{detailLoading && activeTab === 'users' && <span className="ml-1 text-xs">⟳</span>}
                       </div>
                     </button>
                     <button
@@ -360,7 +544,7 @@ const Locations: React.FC = () => {
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V9a4 4 0 10-8 0v2m12 0a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h12z" />
                         </svg>
-                        Locks ({selectedAddress._count?.locks || 0}){detailLoading && activeTab === 'locks' && <span className="ml-1 text-xs">⟳</span>}
+                        Locks ({selectedLocation._count?.locks || 0}){detailLoading && activeTab === 'locks' && <span className="ml-1 text-xs">⟳</span>}
                       </div>
                     </button>
                     <button
@@ -375,7 +559,7 @@ const Locations: React.FC = () => {
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a1.994 1.994 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
-                        Keys ({selectedAddress._count?.keys || 0}){detailLoading && activeTab === 'keys' && <span className="ml-1 text-xs">⟳</span>}
+                        Keys{detailLoading && activeTab === 'keys' && <span className="ml-1 text-xs">⟳</span>}
                       </div>
                     </button>
                   </nav>
@@ -423,14 +607,44 @@ const Locations: React.FC = () => {
                                   </div>
                                   {getStatusIcon(user.isActive)}
                                 </div>
-                                <div className="flex items-center justify-between text-sm mb-3">
-                                  <span className="text-gray-500">Role: {user.role.replace('_', ' ')}</span>
-                                  <div className="flex items-center gap-2">
-                                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a1.994 1.994 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                    </svg>
-                                    <span className="text-gray-500">{user.rfidKeys?.length || 0} keys</span>
+                                <div className="space-y-2 text-sm mb-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-500">Role: {user.role.replace('_', ' ')}</span>
+                                    <div className="flex items-center gap-2">
+                                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a1.994 1.994 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                      </svg>
+                                      <span className="text-gray-500">{user.rfidKeys?.length || 0} keys</span>
+                                    </div>
                                   </div>
+                                  {user.accessType && (
+                                    <div className="flex items-center gap-3 text-xs">
+                                      {user.accessType.hasPermissions && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                          <svg className="h-3 w-3 fill-current" viewBox="0 0 20 20">
+                                            <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                                          </svg>
+                                          Lock Access
+                                        </span>
+                                      )}
+                                      {user.accessType.hasActiveRfidKey && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                          </svg>
+                                          RFID Key
+                                        </span>
+                                      )}
+                                      {user.accessType.hasRecentAccess && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                          Recent Access
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex items-center justify-end">
                                   <button
@@ -453,6 +667,19 @@ const Locations: React.FC = () => {
                     {/* Locks Tab */}
                     {activeTab === 'locks' && (
                       <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-medium text-gray-900">Locks at this Location</h3>
+                          <button
+                            onClick={handleAddLock}
+                            className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded border border-blue-200 hover:border-blue-300 transition-colors"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Lock
+                          </button>
+                        </div>
+                        
                         {(locks || []).length === 0 ? (
                           <div className="text-center py-8">
                             <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -460,8 +687,17 @@ const Locations: React.FC = () => {
                             </svg>
                             <div className="text-gray-600 font-medium">No locks found</div>
                             <div className="text-gray-500 text-sm mt-1">
-                              {detailLoading ? 'Loading locks...' : 'No locks are installed at this address'}
+                              {detailLoading ? 'Loading locks...' : 'No locks are installed at this location'}
                             </div>
+                            <button
+                              onClick={handleAddLock}
+                              className="mt-3 inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded border border-blue-200 hover:border-blue-300 transition-colors"
+                            >
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              Add First Lock
+                            </button>
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -481,7 +717,18 @@ const Locations: React.FC = () => {
                                       )}
                                     </div>
                                   </div>
-                                  {getStatusIcon(true, lock.isOnline)}
+                                  <div className="flex items-center gap-2">
+                                    {getStatusIcon(true, lock.isOnline)}
+                                    <button
+                                      onClick={() => handleEditLock(lock)}
+                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded border border-transparent hover:border-gray-200 transition-colors"
+                                    >
+                                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                      Edit
+                                    </button>
+                                  </div>
                                 </div>
                                 <div className="space-y-2 text-sm">
                                   <div className="flex items-center justify-between">
@@ -551,9 +798,9 @@ const Locations: React.FC = () => {
                                     </div>
                                   )}
                                   <div className="flex items-center justify-between">
-                                    <span className="text-gray-500">Assigned:</span>
+                                    <span className="text-gray-500">Issued:</span>
                                     <span className="text-gray-900">
-                                      {new Date(key.assignedAt).toLocaleDateString()}
+                                      {new Date(key.issuedAt || key.assignedAt || Date.now()).toLocaleDateString()}
                                     </span>
                                   </div>
                                 </div>
@@ -574,9 +821,9 @@ const Locations: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <div className="text-gray-600 font-medium">Select an Address</div>
+                <div className="text-gray-600 font-medium">Select a Location</div>
                 <div className="text-gray-500 text-sm mt-1">
-                  Choose an address from the list to view its users, locks, and keys
+                  Choose a location from the list to view its users, locks, and keys
                 </div>
               </div>
             </div>
@@ -585,14 +832,53 @@ const Locations: React.FC = () => {
       </div>
 
       {/* Permission Management Modal */}
-      {permissionModalUser && selectedAddress && (
+      {permissionModalUser && selectedLocation && (
         <LocationUserPermissionModal
           user={permissionModalUser}
-          address={selectedAddress}
+          location={selectedLocation}
           onClose={handlePermissionModalClose}
           onSuccess={handlePermissionModalSuccess}
         />
       )}
+
+      {/* Location Management Modal */}
+      <LocationManagementModal
+        isOpen={locationModalOpen}
+        onClose={() => setLocationModalOpen(false)}
+        onSuccess={handleLocationModalSuccess}
+        location={locationToEdit}
+        availableAddresses={availableAddresses}
+      />
+
+      {/* Lock Management Modal */}
+      <LockManagementModal
+        isOpen={lockModalOpen}
+        onClose={() => setLockModalOpen(false)}
+        onSuccess={handleLockModalSuccess}
+        lock={lockToEdit}
+        currentLocationId={selectedLocation?.id}
+        availableLocations={locations}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Location"
+        message={`Are you sure you want to delete "${locationToDelete?.name}"? This action cannot be undone and will remove all associated locks and permissions.`}
+        confirmText="Delete Location"
+        confirmStyle="danger"
+        loading={deleteLoading}
+      />
+
+      {/* Bulk Operations Modal */}
+      <BulkLocationOperations
+        isOpen={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        onSuccess={handleBulkModalSuccess}
+        selectedLocations={[]}
+      />
     </div>
   )
 }

@@ -30,14 +30,115 @@ class LockController {
           isOnline: true,
           lastSeen: true,
           projectCityId: true,
-          address: {
-            select: { street: true, number: true, zipCode: true, city: { select: { id: true, name: true } } }
+          location: {
+            select: { id: true, name: true, description: true, address: { select: { street: true, number: true, zipCode: true, city: { select: { id: true, name: true } } } } }
           }
         }
       })
       res.json({ success: true, data: locks })
     } catch (error) {
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to fetch locks' })
+    }
+  }
+
+  async getTree(req: Request, res: Response) {
+    try {
+      const activeOnlyRaw = (req.query.activeOnly as string | undefined)
+      const activeOnly = activeOnlyRaw === undefined ? true : !(String(activeOnlyRaw).toLowerCase() === 'false')
+
+      // Apply project-city scoping
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+      
+      // Get all addresses with their locations and locks in a hierarchical structure
+      const addresses = await prisma.address.findMany({
+        where: {
+          ...(effectiveProjectCityId ? { projectCityId: effectiveProjectCityId } : {}),
+          locations: {
+            some: {
+              locks: {
+                some: activeOnly ? { isActive: true } : {}
+              }
+            }
+          }
+        },
+        orderBy: [{ street: 'asc' }, { number: 'asc' }],
+        select: {
+          id: true,
+          street: true,
+          number: true,
+          zipCode: true,
+          city: {
+            select: { id: true, name: true }
+          },
+          locations: {
+            where: {
+              locks: {
+                some: activeOnly ? { isActive: true } : {}
+              }
+            },
+            orderBy: { name: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              locks: {
+                where: activeOnly ? { isActive: true } : {},
+                orderBy: { name: 'asc' },
+                select: {
+                  id: true,
+                  name: true,
+                  lockType: true,
+                  isActive: true,
+                  isOnline: true,
+                  lastSeen: true,
+                  projectCityId: true
+                }
+              }
+            }
+          }
+        }
+      })
+
+      // Transform data to include counts and summaries
+      const treeData = addresses.map((address: any) => {
+        const locations = address.locations.map((location: any) => {
+          const totalLocks = location.locks.length
+          const onlineLocks = location.locks.filter((lock: any) => lock.isOnline).length
+          const activeLocks = location.locks.filter((lock: any) => lock.isActive).length
+          
+          return {
+            ...location,
+            counts: {
+              total: totalLocks,
+              online: onlineLocks,
+              offline: totalLocks - onlineLocks,
+              active: activeLocks,
+              inactive: totalLocks - activeLocks
+            }
+          }
+        })
+
+        const totalLocks = locations.reduce((sum: number, loc: any) => sum + loc.counts.total, 0)
+        const onlineLocks = locations.reduce((sum: number, loc: any) => sum + loc.counts.online, 0)
+        const activeLocks = locations.reduce((sum: number, loc: any) => sum + loc.counts.active, 0)
+
+        return {
+          ...address,
+          locations,
+          counts: {
+            total: totalLocks,
+            online: onlineLocks,
+            offline: totalLocks - onlineLocks,
+            active: activeLocks,
+            inactive: totalLocks - activeLocks,
+            locations: locations.length
+          }
+        }
+      })
+
+      res.json({ success: true, data: treeData })
+    } catch (error) {
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to fetch lock tree' })
     }
   }
 
@@ -54,7 +155,7 @@ class LockController {
       const lock = await prisma.lock.findUnique({
         where,
         include: {
-          address: { include: { city: true } }
+          location: { include: { address: { include: { city: true } } } }
         }
       })
       
@@ -81,7 +182,7 @@ class LockController {
 
       const existing = await prisma.lock.findUnique({
         where,
-        include: { address: { select: { cityId: true } } }
+        include: { location: { select: { addressId: true, address: { select: { cityId: true } } } } }
       })
       
       if (!existing) {
@@ -94,7 +195,7 @@ class LockController {
           ...(typeof name === 'string' ? { name } : {}),
           ...(typeof isActive === 'boolean' ? { isActive } : {}),
         },
-        include: { address: { include: { city: true } } }
+        include: { location: { include: { address: { include: { city: true } } } } }
       })
 
       res.json({ success: true, data: updated, message: 'Lock updated' })
@@ -115,7 +216,7 @@ class LockController {
 
       const existing = await prisma.lock.findUnique({
         where,
-        include: { address: { select: { cityId: true } } }
+        include: { location: { select: { addressId: true, address: { select: { cityId: true } } } } }
       })
       
       if (!existing) {
@@ -125,7 +226,7 @@ class LockController {
       const updated = await prisma.lock.update({
         where: { id },
         data: { lastSeen: new Date(), isOnline: true },
-        include: { address: { include: { city: true } } }
+        include: { location: { include: { address: { include: { city: true } } } } }
       })
       
       res.json({ success: true, data: updated, message: 'Lock pinged' })
@@ -176,13 +277,20 @@ class LockController {
           lockType: true,
           isActive: true,
           isOnline: true,
-          address: {
+          location: {
             select: { 
-              street: true, 
-              number: true, 
-              zipCode: true, 
-              city: { 
-                select: { id: true, name: true } 
+              id: true,
+              name: true,
+              description: true,
+              address: {
+                select: {
+                  street: true, 
+                  number: true, 
+                  zipCode: true, 
+                  city: { 
+                    select: { id: true, name: true } 
+                  } 
+                }
               } 
             }
           }
@@ -192,6 +300,67 @@ class LockController {
       res.json({ success: true, data: availableLocks })
     } catch (error) {
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to fetch available locks' })
+    }
+  }
+
+  // POST /api/lock - Create new lock
+  async create(req: Request, res: Response) {
+    try {
+      const { name, description, deviceId, secretKey, lockType, locationId } = req.body
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+
+      // Verify location exists and is accessible
+      const location = await prisma.location.findFirst({
+        where: {
+          id: locationId,
+          ...(effectiveProjectCityId ? { address: { projectCityId: effectiveProjectCityId } } : {})
+        },
+        include: {
+          address: true
+        }
+      })
+
+      if (!location) {
+        return res.status(404).json({
+          success: false,
+          error: 'Location not found or not accessible'
+        })
+      }
+
+      const lock = await prisma.lock.create({
+        data: {
+          name,
+          description,
+          deviceId: deviceId || `DEVICE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          secretKey: secretKey || Math.random().toString(36).substring(2, 32),
+          lockType: lockType || 'DOOR',
+          locationId,
+          projectCityId: location.address.projectCityId,
+          isActive: true,
+          isOnline: true
+        },
+        include: {
+          location: {
+            include: {
+              address: {
+                include: {
+                  city: true
+                }
+              }
+            }
+          }
+        }
+      })
+
+      return res.status(201).json({
+        success: true,
+        data: lock
+      })
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to create lock'
+      })
     }
   }
 }

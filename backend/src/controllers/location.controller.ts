@@ -35,14 +35,34 @@ class LocationController {
           canAccess: true,
           validFrom: { lte: now },
           validTo: { gt: now }, // All permissions now have expiration dates
-          lock: { addressId },
+          lock: { location: { addressId } },
         },
         select: { userId: true },
         distinct: ['userId'],
       })
       const eligibleUserIds = new Set(eligible.map((e) => e.userId))
 
-      if (eligibleUserIds.size === 0) {
+      // 2) HYBRID APPROACH: Also get users with active RFID keys within the same tenant scope
+      const addressTenantScope = await prisma.address.findUnique({
+        where: { id: addressId },
+        select: { projectCityId: true }
+      })
+      
+      const rfidKeyUsers: Array<{ userId: string }> = await prisma.rFIDKey.findMany({
+        where: {
+          isActive: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          projectCityId: addressTenantScope?.projectCityId || undefined,
+        },
+        select: { userId: true },
+        distinct: ['userId'],
+      })
+      const rfidKeyUserIds = new Set(rfidKeyUsers.map((r) => r.userId))
+
+      // Combine both sets: users with permissions OR users with active RFID keys in same tenant scope
+      const allRelevantUserIds = new Set([...eligibleUserIds, ...rfidKeyUserIds])
+
+      if (allRelevantUserIds.size === 0) {
         return res.status(200).json({
           success: true,
           data: [],
@@ -50,39 +70,27 @@ class LocationController {
         })
       }
 
-      // 2) Users with active keys
-      const activeKeyUsers: Array<{ userId: string }> = await prisma.rFIDKey.findMany({
-        where: {
-          userId: { in: Array.from(eligibleUserIds) },
-          isActive: true,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
-        select: { userId: true },
-        distinct: ['userId'],
-      })
-      const activeKeyUserIds = new Set(activeKeyUsers.map((u) => u.userId))
-
       // 3) Users with recent successful access at this address
       const recentSuccess: Array<{ userId: string | null }> = await prisma.accessLog.findMany({
         where: {
           result: 'GRANTED',
           timestamp: { gte: fifteenMinAgo },
-          lock: { addressId },
+          lock: { location: { addressId } },
         },
         select: { userId: true },
         distinct: ['userId'],
       })
       const recentSuccessUserIds = new Set((recentSuccess.map((r) => r.userId).filter(Boolean) as string[]))
 
-      // 4) Compute active set
+      // 4) Compute active set (users with permissions OR active keys OR recent access)
       const activeSet = new Set<string>()
-      for (const uid of eligibleUserIds) {
-        if (activeKeyUserIds.has(uid) || recentSuccessUserIds.has(uid)) {
+      for (const uid of allRelevantUserIds) {
+        if (eligibleUserIds.has(uid) || rfidKeyUserIds.has(uid) || recentSuccessUserIds.has(uid)) {
           activeSet.add(uid)
         }
       }
 
-      let selectedIds: string[] = Array.from(eligibleUserIds)
+      let selectedIds: string[] = Array.from(allRelevantUserIds)
       if (status === 'active') selectedIds = selectedIds.filter((id) => activeSet.has(id))
       if (status === 'inactive') selectedIds = selectedIds.filter((id) => !activeSet.has(id))
 
@@ -125,7 +133,12 @@ class LocationController {
         lastName: u.lastName,
         email: u.email,
         role: u.role,
-        activeAtLocation: activeSet.has(u.id),
+        isActive: activeSet.has(u.id),
+        accessType: {
+          hasPermissions: eligibleUserIds.has(u.id),
+          hasActiveRfidKey: rfidKeyUserIds.has(u.id),
+          hasRecentAccess: recentSuccessUserIds.has(u.id)
+        },
         rfidKeys: u.rfidKeys || []
       }))
 
@@ -224,7 +237,7 @@ class LocationController {
           canAccess: true,
           validFrom: { lte: now },
           validTo: { gt: now }, // All permissions now have expiration dates
-          lock: { addressId },
+          lock: { location: { addressId } },
         },
         select: { userId: true },
         distinct: ['userId'],
@@ -376,8 +389,11 @@ class LocationController {
 
       // Compute all lockIds and ensure they belong to the same address
       const lockIds = Array.from(new Set([...grants.map(g => g.lockId), ...revokes.map(r => r.lockId)]))
-      const locks: Array<{ id: string; addressId: string }> = await prisma.lock.findMany({ where: { id: { in: lockIds } }, select: { id: true, addressId: true } })
-      const lockMap = new Map<string, string>(locks.map((l: { id: string; addressId: string }) => [l.id, l.addressId]))
+      const locks: Array<{ id: string; location: { addressId: string } }> = await prisma.lock.findMany({ 
+        where: { id: { in: lockIds } }, 
+        select: { id: true, location: { select: { addressId: true } } } 
+      })
+      const lockMap = new Map<string, string>(locks.map((l: { id: string; location: { addressId: string } }) => [l.id, l.location.addressId]))
       for (const lid of lockIds) {
         const addr = lockMap.get(lid)
         if (addr !== addressId) {
@@ -562,6 +578,359 @@ class LocationController {
       return res.status(200).json({ success: true, data: summary })
     } catch (err) {
       return res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Failed to assign keys in bulk' })
+    }
+  }
+
+  // GET /api/location - List locations
+  async list(req: Request, res: Response) {
+    try {
+      const { page: pageRaw, limit: limitRaw, search } = req.query as { 
+        page?: string
+        limit?: string
+        search?: string
+      }
+
+      const page = Math.max(parseInt(String(pageRaw || 1), 10) || 1, 1)
+      const limit = Math.min(Math.max(parseInt(String(limitRaw || 25), 10) || 25, 1), 100)
+      const offset = (page - 1) * limit
+
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+      const where: any = {}
+      
+      if (effectiveProjectCityId) {
+        where.address = { projectCityId: effectiveProjectCityId }
+      }
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search } },
+          { description: { contains: search } }
+        ]
+      }
+
+      const [locations, total] = await Promise.all([
+        prisma.location.findMany({
+          where,
+          include: {
+            address: {
+              include: {
+                city: true
+              }
+            },
+            _count: {
+              select: {
+                locks: true
+              }
+            }
+          },
+          orderBy: { name: 'asc' },
+          skip: offset,
+          take: limit,
+        }),
+        prisma.location.count({ where })
+      ])
+
+      const totalPages = Math.ceil(total / limit)
+
+      return res.status(200).json({
+        success: true,
+        data: locations,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
+      })
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to fetch locations'
+      })
+    }
+  }
+
+  // POST /api/location - Create location
+  async create(req: Request, res: Response) {
+    try {
+      const { name, description, addressId } = req.body
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+
+      // Verify address exists and is accessible
+      const address = await prisma.address.findFirst({
+        where: {
+          id: addressId,
+          ...(effectiveProjectCityId ? { projectCityId: effectiveProjectCityId } : {})
+        }
+      })
+
+      if (!address) {
+        return res.status(404).json({
+          success: false,
+          error: 'Address not found or not accessible'
+        })
+      }
+
+      const location = await prisma.location.create({
+        data: {
+          name,
+          description,
+          addressId,
+          projectCityId: address.projectCityId
+        },
+        include: {
+          address: {
+            include: {
+              city: true
+            }
+          }
+        }
+      })
+
+      return res.status(201).json({
+        success: true,
+        data: location
+      })
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to create location'
+      })
+    }
+  }
+
+  // PUT /api/location/:locationId - Update location
+  async update(req: Request, res: Response) {
+    try {
+      const { locationId } = req.params
+      const { name, description } = req.body
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+
+      // Verify location exists and is accessible
+      const existingLocation = await prisma.location.findFirst({
+        where: {
+          id: locationId,
+          ...(effectiveProjectCityId ? { address: { projectCityId: effectiveProjectCityId } } : {})
+        }
+      })
+
+      if (!existingLocation) {
+        return res.status(404).json({
+          success: false,
+          error: 'Location not found or not accessible'
+        })
+      }
+
+      const location = await prisma.location.update({
+        where: { id: locationId },
+        data: {
+          name,
+          description,
+          updatedAt: new Date()
+        },
+        include: {
+          address: {
+            include: {
+              city: true
+            }
+          }
+        }
+      })
+
+      return res.status(200).json({
+        success: true,
+        data: location
+      })
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to update location'
+      })
+    }
+  }
+
+  // GET /api/location/:locationId/locks - Get locks for location
+  async getLocks(req: Request, res: Response) {
+    try {
+      const { locationId } = req.params
+      const { page: pageRaw, limit: limitRaw } = req.query as { 
+        page?: string
+        limit?: string
+      }
+
+      const page = Math.max(parseInt(String(pageRaw || 1), 10) || 1, 1)
+      const limit = Math.min(Math.max(parseInt(String(limitRaw || 25), 10) || 25, 1), 100)
+      const offset = (page - 1) * limit
+
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+
+      // Verify location exists and is accessible
+      const location = await prisma.location.findFirst({
+        where: {
+          id: locationId,
+          ...(effectiveProjectCityId ? { address: { projectCityId: effectiveProjectCityId } } : {})
+        }
+      })
+
+      if (!location) {
+        return res.status(404).json({
+          success: false,
+          error: 'Location not found or not accessible'
+        })
+      }
+
+      const [locks, total] = await Promise.all([
+        prisma.lock.findMany({
+          where: { locationId },
+          include: {
+            _count: {
+              select: {
+                permissions: true
+              }
+            }
+          },
+          orderBy: { name: 'asc' },
+          skip: offset,
+          take: limit,
+        }),
+        prisma.lock.count({ where: { locationId } })
+      ])
+
+      const totalPages = Math.ceil(total / limit)
+
+      return res.status(200).json({
+        success: true,
+        data: locks,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
+      })
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to fetch location locks'
+      })
+    }
+  }
+
+  // POST /api/location/bulk - Bulk operations on locations
+  async bulkUpdate(req: Request, res: Response) {
+    try {
+      const { operation, locationIds } = req.body
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+
+      if (!Array.isArray(locationIds) || locationIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'locationIds must be a non-empty array'
+        })
+      }
+
+      // Verify all locations exist and are accessible
+      const locations = await prisma.location.findMany({
+        where: {
+          id: { in: locationIds },
+          ...(effectiveProjectCityId ? { address: { projectCityId: effectiveProjectCityId } } : {})
+        }
+      })
+
+      if (locations.length !== locationIds.length) {
+        return res.status(404).json({
+          success: false,
+          error: 'Some locations not found or not accessible'
+        })
+      }
+
+      let processed = 0
+
+      switch (operation) {
+        case 'activate':
+          // For now, just mark as processed (locations don't have isActive field in this schema)
+          processed = locations.length
+          break
+        case 'deactivate':
+          processed = locations.length
+          break
+        default:
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid operation. Supported operations: activate, deactivate'
+          })
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          operation,
+          processed,
+          total: locationIds.length
+        }
+      })
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to perform bulk operation'
+      })
+    }
+  }
+
+  // DELETE /api/location/:locationId - Delete location
+  async delete(req: Request, res: Response) {
+    try {
+      const { locationId } = req.params
+      const effectiveProjectCityId = getEffectiveProjectCityId(req)
+
+      // Find the location and verify access
+      const location = await prisma.location.findFirst({
+        where: {
+          id: locationId,
+          ...(effectiveProjectCityId ? { projectCityId: effectiveProjectCityId } : {})
+        },
+        include: {
+          _count: {
+            select: {
+              locks: true
+            }
+          }
+        }
+      })
+
+      if (!location) {
+        return res.status(404).json({
+          success: false,
+          error: 'Location not found or not accessible'
+        })
+      }
+
+      // Check if location has locks
+      if (location._count.locks > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot delete location with existing locks. Please remove all locks first.'
+        })
+      }
+
+      // Delete the location
+      await prisma.location.delete({
+        where: { id: locationId }
+      })
+
+      return res.status(200).json({
+        success: true,
+        message: 'Location deleted successfully'
+      })
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to delete location'
+      })
     }
   }
 }

@@ -6,6 +6,10 @@ import {
   validateAccessAttempt,
   validateAccessLogQuery
 } from '../middleware/validation.middleware'
+import { 
+  validateLockAssignment,
+  requireLockAccess
+} from '../middleware/location.middleware'
 
 const router = Router()
 
@@ -30,6 +34,12 @@ router.get('/access-stats', requireManagerOrAbove, AccessController.getAccessSta
 // GET /api/lock - List locks (active)
 router.get('/', LockController.list)
 
+// GET /api/lock/tree - Get locks in hierarchical tree structure
+router.get('/tree', LockController.getTree)
+
+// POST /api/lock - Create new lock (Manager+ only)
+router.post('/', requireManagerOrAbove, LockController.create)
+
 // GET /api/lock/available - Get locks available for a specific user (Manager+)
 router.get('/available', requireManagerOrAbove, LockController.getAvailableForUser)
 
@@ -37,9 +47,9 @@ router.get('/available', requireManagerOrAbove, LockController.getAvailableForUs
 router.post('/:id/ping', requireManagerOrAbove, LockController.ping)
 
 // PUT /api/lock/:id - Update lock (Admin+)
-router.put('/:id', requireAdmin, LockController.update)
+router.put('/:id', requireAdmin, requireLockAccess, validateLockAssignment, LockController.update)
 
 // GET /api/lock/:id - Get lock by id (keep last to avoid capturing other static routes)
-router.get('/:id', LockController.getById)
+router.get('/:id', requireLockAccess, LockController.getById)
 
 export default router

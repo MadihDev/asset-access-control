@@ -15,9 +15,13 @@ class AccessService {
     const lock = await prisma.lock.findUnique({
       where: { id: lockId },
       include: {
-        address: {
+        location: {
           include: {
-            city: true
+            address: {
+              include: {
+                city: true
+              }
+            }
           }
         }
       }
@@ -194,7 +198,7 @@ class AccessService {
       where.lockId = lockId
     }
     if (query.addressId) {
-      where.lock = { ...(where.lock || {}), addressId: query.addressId }
+      where.lock = { ...(where.lock || {}), location: { addressId: query.addressId } }
     }
 
     if (result) {
@@ -216,11 +220,11 @@ class AccessService {
     }
 
     if (projectCityId) {
-      // Strict tenant isolation: Filter by both access log projectCityId AND lock projectCityId
+      // Strict tenant isolation: Filter by both access log projectCityId AND lock location projectCityId
       where.projectCityId = projectCityId
       where.lock = { 
         ...(where.lock || {}), 
-        projectCityId: projectCityId 
+        location: { address: { projectCityId: projectCityId } }
       }
     }
 
@@ -250,9 +254,13 @@ class AccessService {
           },
           lock: {
             include: {
-              address: {
+              location: {
                 include: {
-                  city: true
+                  address: {
+                    include: {
+                      city: true
+                    }
+                  }
                 }
               }
             }
@@ -378,13 +386,21 @@ class AccessService {
     // Find a random lock in the user's project-city for simulation
     const lock = await prisma.lock.findFirst({
       where: {
-        projectCityId: data.projectCityId,
+        location: {
+          address: {
+            projectCityId: data.projectCityId
+          }
+        },
         isActive: true
       },
       include: {
-        address: {
+        location: {
           include: {
-            city: true
+            address: {
+              include: {
+                city: true
+              }
+            }
           }
         }
       }
@@ -435,10 +451,10 @@ class AccessService {
     deviceInfo?: Record<string, any>
     metadata?: Record<string, any>
   }): Promise<AccessLog> {
-      // Derive cityId from lock->address for denormalization
+      // Derive cityId from lock->location->address for denormalization
       const lockCity = await prisma.lock.findUnique({
         where: { id: data.lockId },
-        select: { address: { select: { cityId: true } } }
+        select: { location: { select: { address: { select: { cityId: true } } } } }
       })
       
       // Get user's projectCityId for proper tenant scoping
@@ -454,7 +470,7 @@ class AccessService {
       const accessLog = await prisma.accessLog.create({
         data: { 
           ...data, 
-          cityId: lockCity?.address?.cityId,
+          cityId: lockCity?.location?.address?.cityId,
           projectCityId: userProjectCityId
         },
       include: {
@@ -462,9 +478,13 @@ class AccessService {
         rfidKey: true,
         lock: {
           include: {
-            address: {
+            location: {
               include: {
-                city: true
+                address: {
+                  include: {
+                    city: true
+                  }
+                }
               }
             }
           }
@@ -474,7 +494,7 @@ class AccessService {
 
     // Emit WebSocket events to the project-city's room, if projectCityId is known
     try {
-      const projectCityId = accessLog.lock?.projectCityId
+      const projectCityId = accessLog.lock?.location?.address?.projectCityId
       if (typeof projectCityId === 'string' && projectCityId.length > 0) {
         const { id, result, accessType, timestamp, userId, rfidKeyId, lockId } = accessLog as any
         const payload = { id, result, accessType, timestamp, userId, rfidKeyId, lockId }

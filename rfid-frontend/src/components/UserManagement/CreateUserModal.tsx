@@ -88,11 +88,11 @@ export default function CreateUserModal({ onClose, onSuccess, currentUser }: Cre
     }
 
     // Username validation
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+    const usernameRegex = /^[a-zA-Z0-9]{3,20}$/
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required'
     } else if (!usernameRegex.test(formData.username.trim())) {
-      newErrors.username = 'Username must be 3-20 characters and contain only letters, numbers, and underscores'
+      newErrors.username = 'Username must be 3-20 characters and contain only letters and numbers'
     }
 
     // Password validation
@@ -181,9 +181,6 @@ export default function CreateUserModal({ onClose, onSuccess, currentUser }: Cre
   }
 
   const canCreateRole = (role: string) => {
-    // Super admins can create any role
-    if (currentUser.role === 'SUPER_ADMIN') return true
-    
     // Admins can create users and supervisors, but not other admins
     if (currentUser.role === 'ADMIN') {
       return ['USER', 'SUPERVISOR'].includes(role)

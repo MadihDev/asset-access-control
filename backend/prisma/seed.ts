@@ -16,6 +16,7 @@ async function main() {
     prisma.userPermission.deleteMany(),
     prisma.rFIDKey.deleteMany(),
     prisma.lock.deleteMany(),
+    prisma.location.deleteMany(), // Delete locations before addresses
     prisma.address.deleteMany(),
     // Note: defer city deletion until after users are removed
     prisma.notificationTemplate.deleteMany(),
@@ -106,21 +107,38 @@ async function main() {
   const addressRecords = await prisma.address.findMany()
   type AddressRecord = (typeof addressRecords)[number]
 
-  // Create locks
+  // Create locations for each address
+  const locations: Array<{ name: string; description?: string; addressId: string; projectCityId: string | null }> = []
+  for (const address of addressRecords as AddressRecord[]) {
+    locations.push(
+      { name: `Main Entrance - ${address.street} ${address.number}`, description: 'Main building entrance', addressId: address.id, projectCityId: address.projectCityId },
+      { name: `Office Floor - ${address.street} ${address.number}`, description: 'Office floor access', addressId: address.id, projectCityId: address.projectCityId },
+      { name: `Storage Room - ${address.street} ${address.number}`, description: 'Storage room access', addressId: address.id, projectCityId: address.projectCityId }
+    )
+  }
+
+  await prisma.location.createMany({ data: locations, skipDuplicates: true })
+  console.log('✅ Created locations')
+
+  // Get locations for relations
+  const locationRecords = await prisma.location.findMany()
+  type LocationRecord = (typeof locationRecords)[number]
+
+  // Create locks for each location
   const lockTypes = ['DOOR', 'GATE', 'CABINET', 'ROOM'] as const
   type LockType = typeof lockTypes[number]
-  const locks: Array<{ name: string; description?: string; deviceId: string; secretKey: string; lockType: LockType; addressId: string; isOnline: boolean; projectCityId: string | null }> = []
-  for (const address of (addressRecords as AddressRecord[]).slice(0, 10)) { // Limit to 10 locks
+  const locks: Array<{ name: string; description?: string; deviceId: string; secretKey: string; lockType: LockType; locationId: string; isOnline: boolean; projectCityId: string | null }> = []
+  for (const location of (locationRecords as LocationRecord[]).slice(0, 15)) { // Limit to 15 locks
     const lockType: LockType = lockTypes[Math.floor(Math.random() * lockTypes.length)]
     locks.push({
-      name: `Lock-${address.street}-${address.number}`,
-      description: `Main entrance lock for ${address.street} ${address.number}`,
+      name: `Lock-${location.name}`,
+      description: `Lock for ${location.name}`,
       deviceId: `DEVICE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
       secretKey: Math.random().toString(36).substring(2, 32),
       lockType,
-      addressId: address.id,
+      locationId: location.id,
       isOnline: Math.random() > 0.3, // 70% online
-      projectCityId: address.projectCityId, // Use the address's project-city ID directly
+      projectCityId: location.projectCityId, // Use the location's project-city ID directly
     })
   }
 
@@ -199,15 +217,17 @@ async function main() {
   type LockRecord = (typeof lockRecords)[number]
 
   // Create RFID keys
-  const rfidKeys: Array<{ cardId: string; name: string; userId: string; expiresAt: Date; projectCityId: string }> = []
+  const rfidKeys: Array<{ cardId: string; name: string; userId: string; expiresAt: Date; projectCityId: string | null }> = []
   for (const user of userRecords as UserRecord[]) {
-    rfidKeys.push({
-      cardId: `CARD-${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
-      name: `${user.firstName}'s Access Card`,
-      userId: user.id,
-      projectCityId: user.projectCityId,
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
-    })
+    if (user.projectCityId) { // Only create RFID keys for users with proper tenant assignment
+      rfidKeys.push({
+        cardId: `CARD-${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+        name: `${user.firstName}'s Access Card`,
+        userId: user.id,
+        projectCityId: user.projectCityId,
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
+      })
+    }
   }
 
   await prisma.rFIDKey.createMany({ data: rfidKeys, skipDuplicates: true })
@@ -215,15 +235,13 @@ async function main() {
 
   // Create user permissions (give users access to locks within their tenant only)
   const permissions: Array<{ userId: string; lockId: string; validTo: Date; projectCityId?: string | null }> = []
-  const addressMap = new Map(addressRecords.map((a) => [a.id, a]))
   for (const user of userRecords as UserRecord[]) {
     // Users only get access to locks within their own project-city
     const userProjectCityId = user.projectCityId
     if (!userProjectCityId) continue // Skip users without project-city assignment
     
     const eligibleLocks = (lockRecords as LockRecord[]).filter(lock => {
-      const address = addressMap.get(lock.addressId)
-      return address?.projectCityId === userProjectCityId
+      return lock.projectCityId === userProjectCityId
     })
     
     if (user.role === 'ADMIN') {
@@ -233,7 +251,7 @@ async function main() {
           userId: user.id,
           lockId: lock.id,
           validTo: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours from now
-          projectCityId: addressMap.get(lock.addressId)?.projectCityId || null,
+          projectCityId: lock.projectCityId,
         })
       }
     } else {
@@ -246,7 +264,7 @@ async function main() {
           userId: user.id,
           lockId: shuffledLocks[i].id,
           validTo: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours from now
-          projectCityId: addressMap.get(shuffledLocks[i].addressId)?.projectCityId || null,
+          projectCityId: shuffledLocks[i].projectCityId,
         })
       }
     }
@@ -271,7 +289,7 @@ async function main() {
       userId: randomRfidKey.userId,
       rfidKeyId: randomRfidKey.id,
       lockId: randomLock.id,
-      projectCityId: addressMap.get(randomLock.addressId)?.projectCityId || null,
+      projectCityId: randomLock.projectCityId,
       deviceInfo: {
         deviceModel: 'RFID-Reader-v2',
         firmwareVersion: '2.1.0',

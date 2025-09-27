@@ -336,6 +336,20 @@ export const validateUUID = [
   handleValidationErrors
 ]
 
+export const validateLocationId = [
+  param('locationId')
+    .custom((v) => isId(v))
+    .withMessage('Invalid ID format'),
+  handleValidationErrors
+]
+
+export const validateAddressId = [
+  param('addressId')
+    .custom((v) => isId(v))
+    .withMessage('Invalid ID format'),
+  handleValidationErrors
+]
+
 // Query validation
 export const validatePaginationQuery = [
   query('page')

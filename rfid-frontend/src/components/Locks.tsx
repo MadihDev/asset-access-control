@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { TableCellsIcon, ListBulletIcon } from '@heroicons/react/24/outline'
 import api from '../services/api'
 import { useToast } from '../hooks/useToast'
 import { useTenantScope, useTenantQueryKey } from '../hooks/useTenantScope'
+import LockTreeView from './Locks/LockTreeView'
 
 interface Lock {
   id: string
@@ -37,6 +39,8 @@ export default function Locks({ user }: LocksProps) {
   const { success: toastSuccess, error: toastError } = useToast()
   const { tenantParams } = useTenantScope()
   const [showInactive, setShowInactive] = useState(false)
+  const [viewMode, setViewMode] = useState<'table' | 'tree'>('table')
+  const [searchTerm, setSearchTerm] = useState('')
 
   // Query parameters with tenant scoping
   const queryParams = useMemo(() => ({
@@ -65,8 +69,8 @@ export default function Locks({ user }: LocksProps) {
   })
 
   // Permissions
-  const canUpdate = ['SUPER_ADMIN', 'ADMIN'].includes(user.role)
-  const canPing = ['SUPER_ADMIN', 'ADMIN', 'SUPERVISOR'].includes(user.role)
+  const canUpdate = ['ADMIN'].includes(user.role)
+  const canPing = ['ADMIN', 'SUPERVISOR'].includes(user.role)
 
   // Mutations
   const toggleActiveMutation = useMutation({
@@ -97,8 +101,20 @@ export default function Locks({ user }: LocksProps) {
     }
   })
 
-  const locks = locksData?.data || []
+  const allLocks = locksData?.data || []
   const isLoaderActive = isLoading || isFetching
+
+  // Filter locks based on search term
+  const locks = useMemo(() => {
+    if (!searchTerm) return allLocks;
+    
+    return allLocks.filter((lock: Lock) =>
+      lock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lock.lockType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lock.address?.city?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lock.address?.street?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allLocks, searchTerm])
 
   const formatLastSeen = (lastSeen?: string) => {
     if (!lastSeen) return 'Never'
@@ -127,6 +143,46 @@ export default function Locks({ user }: LocksProps) {
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search locks..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <svg className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            {/* View Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-md p-1">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded transition-colors ${
+                  viewMode === 'table' 
+                    ? 'bg-white text-gray-900 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <TableCellsIcon className="h-4 w-4" />
+                Table
+              </button>
+              <button
+                onClick={() => setViewMode('tree')}
+                className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-medium rounded transition-colors ${
+                  viewMode === 'tree' 
+                    ? 'bg-white text-gray-900 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <ListBulletIcon className="h-4 w-4" />
+                Tree
+              </button>
+            </div>
+
             {/* Show Inactive Toggle */}
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input
@@ -153,7 +209,7 @@ export default function Locks({ user }: LocksProps) {
         </div>
       </div>
 
-      {/* Locks Table */}
+      {/* Locks Content */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-6">
           {isLoading ? (
@@ -183,6 +239,29 @@ export default function Locks({ user }: LocksProps) {
                 {showInactive ? 'No locks match the current criteria' : 'Try enabling "Show inactive locks" to see all locks'}
               </div>
             </div>
+          ) : viewMode === 'tree' ? (
+            <LockTreeView
+              searchTerm={searchTerm}
+              user={user}
+              onLockSelect={(lock) => {
+                // Handle lock selection - could open a modal or show details
+                console.log('Lock selected:', lock);
+              }}
+              onLocationSelect={(location) => {
+                // Handle location selection
+                console.log('Location selected:', location);
+              }}
+              onLockAction={(action, lock) => {
+                if (action === 'ping') {
+                  pingMutation.mutate(lock.id);
+                } else if (action === 'toggle-active') {
+                  toggleActiveMutation.mutate({ 
+                    id: lock.id, 
+                    isActive: !lock.isActive 
+                  });
+                }
+              }}
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">

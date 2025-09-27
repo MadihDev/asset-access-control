@@ -50,10 +50,20 @@ export function addressScopeWhere(req: Request): any | undefined {
 
 /**
  * Build a tenant-aware filter for Lock.
+ * Locks are scoped through both direct projectCityId and location hierarchy.
  */
 export function lockScopeWhere(req: Request): any | undefined {
   const projectCityId = getEffectiveProjectCityId(req)
-  if (projectCityId) return { projectCityId }
+  if (projectCityId) {
+    return {
+      OR: [
+        // Direct projectCityId on lock
+        { projectCityId },
+        // Through location->address->projectCityId (backup)
+        { location: { address: { projectCityId } } }
+      ]
+    }
+  }
   return undefined
 }
 
@@ -63,5 +73,24 @@ export function lockScopeWhere(req: Request): any | undefined {
 export function userScopeWhere(req: Request): any | undefined {
   const projectCityId = getEffectiveProjectCityId(req)
   if (projectCityId) return { projectCityId }
+  return undefined
+}
+
+/**
+ * Build a tenant-aware filter for Location.
+ * Locations are scoped through both direct projectCityId and address hierarchy.
+ */
+export function locationScopeWhere(req: Request): any | undefined {
+  const projectCityId = getEffectiveProjectCityId(req)
+  if (projectCityId) {
+    return {
+      OR: [
+        // Direct projectCityId on location
+        { projectCityId },
+        // Through address->projectCityId (backup)
+        { address: { projectCityId } }
+      ]
+    }
+  }
   return undefined
 }
