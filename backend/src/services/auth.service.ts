@@ -156,6 +156,35 @@ class AuthService {
         return null
       }
 
+      // 🔒 SECURITY FIX: Validate JWT payload claims against database
+      // Prevent JWT payload manipulation attacks
+      if (payload.email && payload.email !== user.email) {
+        logger.warn(`JWT payload manipulation detected: email mismatch for user ${user.id}`)
+        return null
+      }
+
+      if (payload.role && payload.role !== user.role) {
+        logger.warn(`JWT payload manipulation detected: role mismatch for user ${user.id}`)
+        return null
+      }
+
+      // Validate projectCityId if present in payload
+      const userProjectCityId = (user as any).projectCityId ?? undefined
+      if (payload.projectCityId && payload.projectCityId !== userProjectCityId) {
+        logger.warn(`JWT payload manipulation detected: projectCityId mismatch for user ${user.id}`)
+        return null
+      }
+
+      // If payload has projectId, validate it matches the user's project
+      if (payload.projectId && userProjectCityId) {
+        // Extract projectId from projectCityId (format: "project_city")
+        const userProjectId = userProjectCityId.split('_')[0]
+        if (payload.projectId !== userProjectId) {
+          logger.warn(`JWT payload manipulation detected: projectId mismatch for user ${user.id}`)
+          return null
+        }
+      }
+
       const { password: _pw, ...rest } = user
       return {
         id: rest.id,
@@ -165,7 +194,7 @@ class AuthService {
         lastName: rest.lastName,
         role: rest.role as unknown as UserRole,
         isActive: rest.isActive,
-        projectCityId: (rest as any).projectCityId ?? undefined,
+        projectCityId: userProjectCityId,
         createdAt: rest.createdAt,
         updatedAt: rest.updatedAt,
         lastLoginAt: rest.lastLoginAt ?? undefined

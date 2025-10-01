@@ -1,7 +1,6 @@
 import { Server, type Socket } from 'socket.io'
 import type { Server as HttpServer } from 'http'
-import jwt from 'jsonwebtoken'
-import { JWTPayload } from '../types'
+import authService from '../services/auth.service'
 
 let io: Server | null = null
 
@@ -14,10 +13,10 @@ export function initWebSocket(httpServer: HttpServer) {
     },
   })
 
-  io.use((socket: Socket, next: (err?: Error) => void) => {
+  io.use(async (socket: Socket, next: (err?: Error) => void) => {
     try {
-  const authHeader = socket.handshake.headers['authorization']
-  let token = socket.handshake.auth?.token as string | undefined
+      const authHeader = socket.handshake.headers['authorization']
+      let token = socket.handshake.auth?.token as string | undefined
       if (typeof token === 'string' && token.startsWith('Bearer ')) {
         token = token.split(' ')[1]
       }
@@ -25,10 +24,17 @@ export function initWebSocket(httpServer: HttpServer) {
         token = authHeader.split(' ')[1]
       }
       if (!token) return next(new Error('Unauthorized'))
-      const secret = process.env.JWT_SECRET || 'fallback-secret-key'
-      const payload = jwt.verify(token, secret) as JWTPayload
-      ;(socket as any).user = { id: payload.userId, role: payload.role }
-      ;(socket as any).projectCityId = socket.handshake.auth?.projectCityId || payload.projectCityId || undefined
+      
+      // 🔒 SECURITY FIX: Use AuthService for proper JWT validation
+      // This prevents JWT payload manipulation attacks
+      const user = await authService.validateToken(token)
+      if (!user) {
+        return next(new Error('Unauthorized'))
+      }
+      
+      // Use validated data from database, not JWT payload claims
+      ;(socket as any).user = { id: user.id, role: user.role }
+      ;(socket as any).projectCityId = user.projectCityId || undefined
       next()
     } catch (_err) {
       next(new Error('Unauthorized'))
