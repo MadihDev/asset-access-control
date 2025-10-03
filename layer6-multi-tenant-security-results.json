@@ -1,0 +1,48 @@
+{
+  "layer": "LAYER 6: MULTI-TENANT SECURITY",
+  "totalTests": 4,
+  "passedTests": 0,
+  "failedTests": 0,
+  "warningTests": 4,
+  "score": "50.0",
+  "criticalVulnerabilities": 0,
+  "authenticatedTenants": 0,
+  "results": [
+    {
+      "layer": "LAYER 6: MULTI-TENANT SECURITY",
+      "category": "DATA_ISOLATION",
+      "test": "Multi-tenant testing prerequisites",
+      "status": "WARN",
+      "message": "Need at least 2 tenant tokens for comprehensive testing",
+      "details": "",
+      "timestamp": "2025-09-30T21:01:34.032Z"
+    },
+    {
+      "layer": "LAYER 6: MULTI-TENANT SECURITY",
+      "category": "BOUNDARY_ENFORCEMENT",
+      "test": "Tenant boundary testing prerequisites",
+      "status": "WARN",
+      "message": "No authenticated tenants available",
+      "details": "",
+      "timestamp": "2025-09-30T21:01:34.034Z"
+    },
+    {
+      "layer": "LAYER 6: MULTI-TENANT SECURITY",
+      "category": "ADMIN_CAPABILITIES",
+      "test": "Admin testing prerequisites",
+      "status": "WARN",
+      "message": "No admin tokens available",
+      "details": "",
+      "timestamp": "2025-09-30T21:01:34.036Z"
+    },
+    {
+      "layer": "LAYER 6: MULTI-TENANT SECURITY",
+      "category": "CONFIGURATION_SECURITY",
+      "test": "Configuration testing prerequisites",
+      "status": "WARN",
+      "message": "No authenticated tenants available",
+      "details": "",
+      "timestamp": "2025-09-30T21:01:34.039Z"
+    }
+  ]
+}

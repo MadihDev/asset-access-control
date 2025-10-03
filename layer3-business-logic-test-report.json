@@ -1,0 +1,108 @@
+{
+  "timestamp": "2025-09-30T19:10:45.708Z",
+  "summary": {
+    "passed": 10,
+    "failed": 1,
+    "warnings": 1,
+    "total": 12,
+    "score": 83
+  },
+  "tests": [
+    {
+      "category": "TENANT_ISOLATION",
+      "test": "techcorp-amsterdam user data isolation",
+      "status": "PASS",
+      "message": "Access properly restricted",
+      "details": null,
+      "timestamp": "2025-09-30T19:10:44.550Z"
+    },
+    {
+      "category": "TENANT_ISOLATION",
+      "test": "techcorp-amsterdam location data isolation",
+      "status": "PASS",
+      "message": "Only sees own tenant locations",
+      "details": "Projects visible: 0",
+      "timestamp": "2025-09-30T19:10:44.594Z"
+    },
+    {
+      "category": "TENANT_ISOLATION",
+      "test": "safeaccess-rotterdam user data isolation",
+      "status": "PASS",
+      "message": "Access properly restricted",
+      "details": null,
+      "timestamp": "2025-09-30T19:10:44.814Z"
+    },
+    {
+      "category": "TENANT_ISOLATION",
+      "test": "safeaccess-rotterdam location data isolation",
+      "status": "PASS",
+      "message": "Only sees own tenant locations",
+      "details": "Projects visible: 0",
+      "timestamp": "2025-09-30T19:10:44.834Z"
+    },
+    {
+      "category": "TENANT_ISOLATION",
+      "test": "securebuildings-amsterdam user data isolation",
+      "status": "FAIL",
+      "message": "Sees multiple projects: ",
+      "details": "Expected: securebuildings, Got: ",
+      "timestamp": "2025-09-30T19:10:45.351Z"
+    },
+    {
+      "category": "TENANT_ISOLATION",
+      "test": "securebuildings-amsterdam location data isolation",
+      "status": "PASS",
+      "message": "Only sees own tenant locations",
+      "details": "Projects visible: 0",
+      "timestamp": "2025-09-30T19:10:45.364Z"
+    },
+    {
+      "category": "CROSS_TENANT_ACCESS",
+      "test": "Cross-tenant user access blocked",
+      "status": "PASS",
+      "message": "Cross-tenant user access properly blocked",
+      "details": null,
+      "timestamp": "2025-09-30T19:10:45.578Z"
+    },
+    {
+      "category": "CROSS_TENANT_ACCESS",
+      "test": "Project data cross-tenant isolation",
+      "status": "WARN",
+      "message": "Project data access error",
+      "details": "Request failed with status code 401",
+      "timestamp": "2025-09-30T19:10:45.582Z"
+    },
+    {
+      "category": "BUSINESS_LOGIC_AUTH",
+      "test": "USER location creation blocked",
+      "status": "PASS",
+      "message": "USER properly blocked from creating locations",
+      "details": null,
+      "timestamp": "2025-09-30T19:10:45.597Z"
+    },
+    {
+      "category": "BUSINESS_LOGIC_AUTH",
+      "test": "USER bulk export blocked",
+      "status": "PASS",
+      "message": "USER properly blocked from bulk operations",
+      "details": null,
+      "timestamp": "2025-09-30T19:10:45.607Z"
+    },
+    {
+      "category": "DATA_INTEGRITY",
+      "test": "Invalid tenant ID rejection",
+      "status": "PASS",
+      "message": "Invalid tenant ID properly rejected",
+      "details": null,
+      "timestamp": "2025-09-30T19:10:45.685Z"
+    },
+    {
+      "category": "DATA_INTEGRITY",
+      "test": "Malformed data validation",
+      "status": "PASS",
+      "message": "Malformed data properly validated",
+      "details": null,
+      "timestamp": "2025-09-30T19:10:45.700Z"
+    }
+  ]
+}

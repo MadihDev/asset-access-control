@@ -1,0 +1,328 @@
+{
+  "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+  "totalTests": 34,
+  "passedTests": 25,
+  "failedTests": 0,
+  "warningTests": 0,
+  "criticalFailures": 0,
+  "score": "73.5",
+  "testedUsers": 7,
+  "roleDistribution": {
+    "ADMIN": 3,
+    "USER": 3,
+    "SUPERVISOR": 1
+  },
+  "results": [
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin user access - TechCorp_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access user management",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:12.215Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin location access - TechCorp_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access location management",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:12.253Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin audit access - TechCorp_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access audit logs",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:12.305Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin user access - TechCorp_Rotterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access user management",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:14.342Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin location access - TechCorp_Rotterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access location management",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:14.364Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin audit access - TechCorp_Rotterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access audit logs",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:14.390Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin user access - SafeAccess_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access user management",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:16.425Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin location access - SafeAccess_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access location management",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:16.446Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ACCESS",
+      "test": "Admin audit access - SafeAccess_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can access audit logs",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:16.467Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "USER_ACCESS",
+      "test": "User list access - TechCorp_Amsterdam_User",
+      "status": "PASS",
+      "message": "Regular user properly denied user list access",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:18.483Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "USER_ACCESS",
+      "test": "User location access - TechCorp_Amsterdam_User",
+      "status": "INFO",
+      "message": "Regular user can access locations",
+      "details": "Normal for access control system",
+      "timestamp": "2025-10-01T13:41:18.500Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "USER_ACCESS",
+      "test": "User list access - TechCorp_Rotterdam_User",
+      "status": "PASS",
+      "message": "Regular user properly denied user list access",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:20.539Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "USER_ACCESS",
+      "test": "User location access - TechCorp_Rotterdam_User",
+      "status": "INFO",
+      "message": "Regular user can access locations",
+      "details": "Normal for access control system",
+      "timestamp": "2025-10-01T13:41:20.595Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "USER_ACCESS",
+      "test": "User list access - TechCorp_Amsterdam_Guard",
+      "status": "PASS",
+      "message": "Regular user properly denied user list access",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:22.640Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "USER_ACCESS",
+      "test": "User location access - TechCorp_Amsterdam_Guard",
+      "status": "INFO",
+      "message": "Regular user can access locations",
+      "details": "Normal for access control system",
+      "timestamp": "2025-10-01T13:41:22.694Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "PRIVILEGE_ESCALATION",
+      "test": "Privilege escalation prevention - user creation",
+      "status": "PASS",
+      "message": "Regular user properly denied admin action",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:24.741Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "PRIVILEGE_ESCALATION",
+      "test": "Privilege escalation prevention - user role modification",
+      "status": "PASS",
+      "message": "Regular user properly denied admin action",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:26.294Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "PRIVILEGE_ESCALATION",
+      "test": "Privilege escalation prevention - user deletion",
+      "status": "PASS",
+      "message": "Regular user properly denied admin action",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:27.814Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ISOLATION",
+      "test": "Cross-tenant admin attempt - TechCorp_Amsterdam_Admin",
+      "status": "INFO",
+      "message": "Cross-tenant admin action returned status: 400",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:29.586Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ISOLATION",
+      "test": "Cross-tenant admin attempt - TechCorp_Amsterdam_Admin",
+      "status": "INFO",
+      "message": "Cross-tenant admin action returned status: 400",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:31.650Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ISOLATION",
+      "test": "Cross-tenant admin attempt - TechCorp_Rotterdam_Admin",
+      "status": "INFO",
+      "message": "Cross-tenant admin action returned status: 400",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:33.716Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ISOLATION",
+      "test": "Cross-tenant admin attempt - TechCorp_Rotterdam_Admin",
+      "status": "INFO",
+      "message": "Cross-tenant admin action returned status: 400",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:35.804Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ISOLATION",
+      "test": "Cross-tenant admin attempt - SafeAccess_Amsterdam_Admin",
+      "status": "INFO",
+      "message": "Cross-tenant admin action returned status: 400",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:37.870Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "ADMIN_ISOLATION",
+      "test": "Cross-tenant admin attempt - SafeAccess_Amsterdam_Admin",
+      "status": "INFO",
+      "message": "Cross-tenant admin action returned status: 400",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:39.923Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource ownership validation - TechCorp_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "User only accesses own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:42.047Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource modification - TechCorp_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can modify own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:42.087Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource ownership validation - TechCorp_Rotterdam_Admin",
+      "status": "PASS",
+      "message": "User only accesses own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:44.133Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource modification - TechCorp_Rotterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can modify own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:44.178Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource ownership validation - SafeAccess_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "User only accesses own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:46.233Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource modification - SafeAccess_Amsterdam_Admin",
+      "status": "PASS",
+      "message": "Admin can modify own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:46.304Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource ownership validation - TechCorp_Amsterdam_User",
+      "status": "PASS",
+      "message": "User only accesses own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:48.343Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource ownership validation - TechCorp_Rotterdam_User",
+      "status": "PASS",
+      "message": "User only accesses own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:50.398Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource ownership validation - TechCorp_Amsterdam_Guard",
+      "status": "PASS",
+      "message": "User only accesses own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:52.502Z"
+    },
+    {
+      "section": "SECTION 3: RESOURCE ACCESS CONTROL TESTING",
+      "category": "RESOURCE_SECURITY",
+      "test": "Resource ownership validation - TechCorp_Amsterdam_Supervisor",
+      "status": "PASS",
+      "message": "User only accesses own tenant resources",
+      "details": "",
+      "timestamp": "2025-10-01T13:41:54.539Z"
+    }
+  ],
+  "recommendations": [
+    "Address access control warnings",
+    "Review role-based permission implementation",
+    "Monitor for privilege escalation attempts"
+  ]
+}

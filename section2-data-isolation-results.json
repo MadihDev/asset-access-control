@@ -1,0 +1,235 @@
+{
+  "section": "SECTION 2: DATA ISOLATION TESTING",
+  "totalTests": 22,
+  "passedTests": 19,
+  "failedTests": 0,
+  "warningTests": 0,
+  "criticalFailures": 0,
+  "score": "86.4",
+  "testedTenants": 3,
+  "tenantDetails": [
+    {
+      "name": "TechCorp_Amsterdam",
+      "project": "techcorp",
+      "city": "Amsterdam",
+      "projectCityId": "cmg6pefd50001ytrsg7bydkk7"
+    },
+    {
+      "name": "TechCorp_Rotterdam",
+      "project": "techcorp",
+      "city": "Rotterdam",
+      "projectCityId": "cmg6pefda0003ytrs7jb0xbrp"
+    },
+    {
+      "name": "SafeAccess_Amsterdam",
+      "project": "safeaccess",
+      "city": "Amsterdam",
+      "projectCityId": "cmg6pefeb000nytrswzmtrcow"
+    }
+  ],
+  "results": [
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "USER_ISOLATION",
+      "test": "Own tenant user access - TechCorp_Amsterdam",
+      "status": "PASS",
+      "message": "TechCorp_Amsterdam only sees own tenant users (6 users)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:08.223Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "USER_ISOLATION",
+      "test": "Own tenant user access - TechCorp_Rotterdam",
+      "status": "PASS",
+      "message": "TechCorp_Rotterdam only sees own tenant users (4 users)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:10.334Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "USER_ISOLATION",
+      "test": "Own tenant user access - SafeAccess_Amsterdam",
+      "status": "PASS",
+      "message": "SafeAccess_Amsterdam only sees own tenant users (4 users)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:12.417Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "PARAMETER_MANIPULATION",
+      "test": "Parameter protection - projectCityId parameter",
+      "status": "PASS",
+      "message": "Parameter manipulation properly filtered",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:14.554Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "PARAMETER_MANIPULATION",
+      "test": "Parameter protection - filter parameter",
+      "status": "PASS",
+      "message": "Parameter manipulation properly filtered",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:16.128Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "PARAMETER_MANIPULATION",
+      "test": "Parameter protection - tenant parameter",
+      "status": "PASS",
+      "message": "Parameter manipulation properly filtered",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:17.740Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "PARAMETER_MANIPULATION",
+      "test": "Parameter protection - include all parameter",
+      "status": "PASS",
+      "message": "Parameter manipulation properly filtered",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:19.297Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "RFID_ISOLATION",
+      "test": "RFID key endpoint - TechCorp_Amsterdam",
+      "status": "INFO",
+      "message": "RFID key endpoint not found",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:20.841Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "RFID_ISOLATION",
+      "test": "RFID key endpoint - TechCorp_Rotterdam",
+      "status": "INFO",
+      "message": "RFID key endpoint not found",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:22.872Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "RFID_ISOLATION",
+      "test": "RFID key endpoint - SafeAccess_Amsterdam",
+      "status": "INFO",
+      "message": "RFID key endpoint not found",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:24.912Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "LOCATION_ISOLATION",
+      "test": "Own tenant location access - TechCorp_Amsterdam",
+      "status": "PASS",
+      "message": "TechCorp_Amsterdam only sees own tenant locations (6 locations)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:27.105Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "LOCATION_ISOLATION",
+      "test": "Own tenant location access - TechCorp_Rotterdam",
+      "status": "PASS",
+      "message": "TechCorp_Rotterdam only sees own tenant locations (6 locations)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:29.198Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "LOCATION_ISOLATION",
+      "test": "Own tenant location access - SafeAccess_Amsterdam",
+      "status": "PASS",
+      "message": "SafeAccess_Amsterdam only sees own tenant locations (6 locations)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:31.226Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "LOCK_ISOLATION",
+      "test": "Own tenant lock access - TechCorp_Amsterdam",
+      "status": "PASS",
+      "message": "TechCorp_Amsterdam only sees own tenant locks (11 locks)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:33.290Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "LOCK_ISOLATION",
+      "test": "Own tenant lock access - TechCorp_Rotterdam",
+      "status": "PASS",
+      "message": "TechCorp_Rotterdam only sees own tenant locks (12 locks)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:35.331Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "LOCK_ISOLATION",
+      "test": "Own tenant lock access - SafeAccess_Amsterdam",
+      "status": "PASS",
+      "message": "SafeAccess_Amsterdam only sees own tenant locks (11 locks)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:37.390Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "AUDIT_ISOLATION",
+      "test": "Own tenant audit log access - TechCorp_Amsterdam",
+      "status": "PASS",
+      "message": "TechCorp_Amsterdam only sees own tenant audit logs (50 logs)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:39.501Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "AUDIT_SECURITY",
+      "test": "Audit log data protection - TechCorp_Amsterdam",
+      "status": "PASS",
+      "message": "Audit logs do not expose sensitive data",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:39.506Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "AUDIT_ISOLATION",
+      "test": "Own tenant audit log access - TechCorp_Rotterdam",
+      "status": "PASS",
+      "message": "TechCorp_Rotterdam only sees own tenant audit logs (42 logs)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:41.582Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "AUDIT_SECURITY",
+      "test": "Audit log data protection - TechCorp_Rotterdam",
+      "status": "PASS",
+      "message": "Audit logs do not expose sensitive data",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:41.588Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "AUDIT_ISOLATION",
+      "test": "Own tenant audit log access - SafeAccess_Amsterdam",
+      "status": "PASS",
+      "message": "SafeAccess_Amsterdam only sees own tenant audit logs (42 logs)",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:43.657Z"
+    },
+    {
+      "section": "SECTION 2: DATA ISOLATION TESTING",
+      "category": "AUDIT_SECURITY",
+      "test": "Audit log data protection - SafeAccess_Amsterdam",
+      "status": "PASS",
+      "message": "Audit logs do not expose sensitive data",
+      "details": "",
+      "timestamp": "2025-10-01T13:37:43.661Z"
+    }
+  ],
+  "recommendations": [
+    "Address data isolation warnings",
+    "Review tenant boundary implementations",
+    "Monitor for potential data leakage"
+  ]
+}

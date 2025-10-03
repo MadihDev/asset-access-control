@@ -1,0 +1,156 @@
+{
+  "timestamp": "2025-09-30T19:01:45.052Z",
+  "summary": {
+    "passed": 18,
+    "failed": 0,
+    "warnings": 0,
+    "total": 18,
+    "score": 100
+  },
+  "tests": [
+    {
+      "category": "ROLE_ACCESS",
+      "test": "USER blocked from /user/",
+      "status": "PASS",
+      "message": "Properly blocked (403)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:43.799Z"
+    },
+    {
+      "category": "ROLE_ACCESS",
+      "test": "ADMIN access to /user/",
+      "status": "PASS",
+      "message": "Properly allowed (200)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:43.820Z"
+    },
+    {
+      "category": "ROLE_ACCESS",
+      "test": "USER blocked from /user/export",
+      "status": "PASS",
+      "message": "Properly blocked (403)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.030Z"
+    },
+    {
+      "category": "ROLE_ACCESS",
+      "test": "ADMIN access to /user/export",
+      "status": "PASS",
+      "message": "Properly allowed (200)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.047Z"
+    },
+    {
+      "category": "ROLE_ACCESS",
+      "test": "USER blocked from /device",
+      "status": "PASS",
+      "message": "Properly blocked (403)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.263Z"
+    },
+    {
+      "category": "ROLE_ACCESS",
+      "test": "ADMIN access to /device",
+      "status": "PASS",
+      "message": "Properly allowed (200)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.275Z"
+    },
+    {
+      "category": "ROLE_ACCESS",
+      "test": "USER blocked from /audit",
+      "status": "PASS",
+      "message": "Properly blocked (403)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.494Z"
+    },
+    {
+      "category": "ROLE_ACCESS",
+      "test": "ADMIN access to /audit",
+      "status": "PASS",
+      "message": "Properly allowed (200)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.596Z"
+    },
+    {
+      "category": "TOKEN_SECURITY",
+      "test": "Malformed token validation",
+      "status": "PASS",
+      "message": "Malformed token properly rejected (401)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.807Z"
+    },
+    {
+      "category": "TOKEN_SECURITY",
+      "test": "Malformed token validation",
+      "status": "PASS",
+      "message": "Malformed token properly rejected (401)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.810Z"
+    },
+    {
+      "category": "TOKEN_SECURITY",
+      "test": "Malformed token validation",
+      "status": "PASS",
+      "message": "Malformed token properly rejected (401)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.816Z"
+    },
+    {
+      "category": "TOKEN_SECURITY",
+      "test": "Malformed token validation",
+      "status": "PASS",
+      "message": "Malformed token properly rejected (401)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.821Z"
+    },
+    {
+      "category": "TOKEN_SECURITY",
+      "test": "Malformed token validation",
+      "status": "PASS",
+      "message": "Malformed token properly rejected (401)",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.825Z"
+    },
+    {
+      "category": "TOKEN_SECURITY",
+      "test": "Tampered token claims",
+      "status": "PASS",
+      "message": "Tampered token properly rejected - signature validation working",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:44.830Z"
+    },
+    {
+      "category": "PRIVILEGE_ESCALATION",
+      "test": "Parameter injection in login",
+      "status": "PASS",
+      "message": "Parameter injection properly ignored",
+      "details": "User role returned: USER",
+      "timestamp": "2025-09-30T19:01:45.006Z"
+    },
+    {
+      "category": "PRIVILEGE_ESCALATION",
+      "test": "HTTP parameter pollution",
+      "status": "PASS",
+      "message": "Parameter pollution properly blocked",
+      "details": null,
+      "timestamp": "2025-09-30T19:01:45.010Z"
+    },
+    {
+      "category": "CROSS_USER_ACCESS",
+      "test": "Own profile access",
+      "status": "PASS",
+      "message": "User can access own profile",
+      "details": "Expected: techcorpadminamsterdam, Got: techcorpadminamsterdam",
+      "timestamp": "2025-09-30T19:01:45.019Z"
+    },
+    {
+      "category": "PROJECT_ISOLATION",
+      "test": "Cross-project data isolation",
+      "status": "PASS",
+      "message": "Project data properly isolated",
+      "details": "TechCorp user sees 0 non-TechCorp users",
+      "timestamp": "2025-09-30T19:01:45.045Z"
+    }
+  ]
+}

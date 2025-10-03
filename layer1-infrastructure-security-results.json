@@ -1,0 +1,172 @@
+{
+  "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+  "totalTests": 18,
+  "passedTests": 17,
+  "failedTests": 0,
+  "warningTests": 1,
+  "score": "97.2",
+  "results": [
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "NETWORK_SECURITY",
+      "test": "Port 5000 accessibility",
+      "status": "PASS",
+      "message": "Application port accessible as expected",
+      "details": "",
+      "timestamp": "2025-09-30T20:23:46.735Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "NETWORK_SECURITY",
+      "test": "DNS resolution",
+      "status": "PASS",
+      "message": "Host DNS resolution working",
+      "details": "Resolved to: ::1",
+      "timestamp": "2025-09-30T20:23:46.752Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "NETWORK_SECURITY",
+      "test": "SSL/TLS configuration",
+      "status": "WARN",
+      "message": "Application running on HTTP",
+      "details": "Consider implementing HTTPS for production",
+      "timestamp": "2025-09-30T20:23:46.753Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "SERVER_SECURITY",
+      "test": "Server header disclosure",
+      "status": "PASS",
+      "message": "Server information properly hidden",
+      "details": "",
+      "timestamp": "2025-09-30T20:23:46.807Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "SERVER_SECURITY",
+      "test": "X-Powered-By header disclosure",
+      "status": "PASS",
+      "message": "Technology stack properly hidden",
+      "details": "",
+      "timestamp": "2025-09-30T20:23:46.808Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "SERVER_SECURITY",
+      "test": "x-frame-options header",
+      "status": "PASS",
+      "message": "Security header present",
+      "details": "x-frame-options: SAMEORIGIN",
+      "timestamp": "2025-09-30T20:23:46.809Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "SERVER_SECURITY",
+      "test": "x-content-type-options header",
+      "status": "PASS",
+      "message": "Security header present",
+      "details": "x-content-type-options: nosniff",
+      "timestamp": "2025-09-30T20:23:46.810Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "SERVER_SECURITY",
+      "test": "x-xss-protection header",
+      "status": "PASS",
+      "message": "Security header present",
+      "details": "x-xss-protection: 0",
+      "timestamp": "2025-09-30T20:23:46.811Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "SERVER_SECURITY",
+      "test": "strict-transport-security header",
+      "status": "PASS",
+      "message": "Security header present",
+      "details": "strict-transport-security: max-age=31536000; includeSubDomains",
+      "timestamp": "2025-09-30T20:23:46.812Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "SERVER_SECURITY",
+      "test": "content-security-policy header",
+      "status": "PASS",
+      "message": "Security header present",
+      "details": "content-security-policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+      "timestamp": "2025-09-30T20:23:46.813Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "SERVER_SECURITY",
+      "test": "HTTP GET method",
+      "status": "PASS",
+      "message": "Standard HTTP method working correctly",
+      "details": "",
+      "timestamp": "2025-09-30T20:23:46.819Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "DATABASE_SECURITY",
+      "test": "Database error disclosure",
+      "status": "PASS",
+      "message": "Database errors properly handled",
+      "details": "Input: '; DROP TABLE users; -- - No sensitive info disclosed",
+      "timestamp": "2025-09-30T20:23:46.879Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "DATABASE_SECURITY",
+      "test": "Database error disclosure",
+      "status": "PASS",
+      "message": "Database errors properly handled",
+      "details": "Input: ' OR '1'='1 - No sensitive info disclosed",
+      "timestamp": "2025-09-30T20:23:46.987Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "DATABASE_SECURITY",
+      "test": "Database error disclosure",
+      "status": "PASS",
+      "message": "Database errors properly handled",
+      "details": "Input: ' UNION SELECT * FROM users -- - No sensitive info disclosed",
+      "timestamp": "2025-09-30T20:23:47.097Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "DATABASE_SECURITY",
+      "test": "Database error disclosure",
+      "status": "PASS",
+      "message": "Database errors properly handled",
+      "details": "Input: '; SELECT version(); -- - No sensitive info disclosed",
+      "timestamp": "2025-09-30T20:23:47.207Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "DATABASE_SECURITY",
+      "test": "Database connectivity",
+      "status": "PASS",
+      "message": "Database connection appears secure",
+      "details": "No direct database access exposed",
+      "timestamp": "2025-09-30T20:23:47.327Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "DOS_PROTECTION",
+      "test": "Large request handling",
+      "status": "PASS",
+      "message": "Large requests properly rejected",
+      "details": "Status: 413",
+      "timestamp": "2025-09-30T20:23:47.526Z"
+    },
+    {
+      "layer": "LAYER 1: INFRASTRUCTURE SECURITY",
+      "category": "DOS_PROTECTION",
+      "test": "Concurrent request handling",
+      "status": "PASS",
+      "message": "Server handles concurrent requests well",
+      "details": "20/20 successful",
+      "timestamp": "2025-09-30T20:23:47.608Z"
+    }
+  ]
+}

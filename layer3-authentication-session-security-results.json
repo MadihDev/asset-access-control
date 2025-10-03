@@ -1,0 +1,110 @@
+{
+  "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+  "totalTests": 11,
+  "passedTests": 1,
+  "failedTests": 6,
+  "warningTests": 4,
+  "score": "27.3",
+  "results": [
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "JWT_SECURITY",
+      "test": "JWT testing prerequisites",
+      "status": "FAIL",
+      "message": "No valid tokens available for JWT testing",
+      "details": "",
+      "timestamp": "2025-09-30T20:54:24.356Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "MFA_SECURITY",
+      "test": "2FA endpoint /auth/2fa/setup protection",
+      "status": "WARN",
+      "message": "2FA endpoint accessible without authentication",
+      "details": "Status: 429",
+      "timestamp": "2025-09-30T20:54:24.364Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "MFA_SECURITY",
+      "test": "2FA endpoint /auth/2fa/verify protection",
+      "status": "WARN",
+      "message": "2FA endpoint accessible without authentication",
+      "details": "Status: 429",
+      "timestamp": "2025-09-30T20:54:24.369Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "MFA_SECURITY",
+      "test": "2FA endpoint /auth/2fa/disable protection",
+      "status": "WARN",
+      "message": "2FA endpoint accessible without authentication",
+      "details": "Status: 429",
+      "timestamp": "2025-09-30T20:54:24.376Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "MFA_SECURITY",
+      "test": "2FA endpoint /auth/2fa/backup-codes protection",
+      "status": "WARN",
+      "message": "2FA endpoint accessible without authentication",
+      "details": "Status: 429",
+      "timestamp": "2025-09-30T20:54:24.384Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "AUTH_FLOWS",
+      "test": "Invalid credential rejection",
+      "status": "FAIL",
+      "message": "Invalid credentials accepted",
+      "details": "Status: 429, Test: nonexistent",
+      "timestamp": "2025-09-30T20:54:24.391Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "AUTH_FLOWS",
+      "test": "Invalid credential rejection",
+      "status": "FAIL",
+      "message": "Invalid credentials accepted",
+      "details": "Status: 429, Test: safeadmin",
+      "timestamp": "2025-09-30T20:54:24.702Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "AUTH_FLOWS",
+      "test": "Invalid credential rejection",
+      "status": "FAIL",
+      "message": "Invalid credentials accepted",
+      "details": "Status: 429, Test: safeadmin",
+      "timestamp": "2025-09-30T20:54:25.014Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "AUTH_FLOWS",
+      "test": "Invalid credential rejection",
+      "status": "FAIL",
+      "message": "Invalid credentials accepted",
+      "details": "Status: 429, Test: safeadmin",
+      "timestamp": "2025-09-30T20:54:25.326Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "AUTH_FLOWS",
+      "test": "Brute force protection",
+      "status": "PASS",
+      "message": "Brute force attempts properly rate limited",
+      "details": "10/10 attempts blocked",
+      "timestamp": "2025-09-30T20:54:25.669Z"
+    },
+    {
+      "layer": "LAYER 3: AUTHENTICATION & SESSION SECURITY",
+      "category": "SESSION_SECURITY",
+      "test": "Session testing prerequisites",
+      "status": "FAIL",
+      "message": "No valid tokens available for session testing",
+      "details": "",
+      "timestamp": "2025-09-30T20:54:26.971Z"
+    }
+  ],
+  "validTokens": 0
+}

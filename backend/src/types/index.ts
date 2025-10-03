@@ -315,7 +315,7 @@ export interface ApiError {
   details?: ValidationError[]
 }
 
-// JWT payload
+// JWT payload (legacy - being enhanced)
 export interface JWTPayload {
   userId: string
   email: string
@@ -327,6 +327,33 @@ export interface JWTPayload {
   jti?: string
   iat?: number
   exp?: number
+}
+
+// Enhanced JWT payload with RFC 7519 compliance
+export interface EnhancedJWTPayload {
+  // Standard JWT Claims (RFC 7519)
+  iss: string        // Issuer
+  sub: string        // Subject (User ID)
+  aud: string        // Audience
+  exp: number        // Expiration Time
+  nbf: number        // Not Before
+  iat: number        // Issued At
+  jti: string        // JWT ID
+
+  // Custom Application Claims
+  email: string
+  role: string
+  projectCityId?: string
+
+  // Security Enhancement Claims
+  scope: string[]    // User permissions/scope
+  tenant?: string    // Tenant identifier
+  sessionId: string  // Session tracking
+  tokenType: 'access' | 'refresh'
+
+  // Security metadata
+  ipAddress?: string
+  userAgent?: string
 }
 
 // Dashboard statistics

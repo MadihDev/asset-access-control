@@ -1,0 +1,379 @@
+{
+  "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+  "totalTests": 41,
+  "passedTests": 41,
+  "failedTests": 0,
+  "warningTests": 0,
+  "score": "100.0",
+  "results": [
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection resistance",
+      "status": "PASS",
+      "message": "SQL injection properly blocked",
+      "details": "Payload: ' OR '1'='1...",
+      "timestamp": "2025-09-30T20:59:11.918Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection resistance",
+      "status": "PASS",
+      "message": "SQL injection properly blocked",
+      "details": "Payload: ' OR 1=1--...",
+      "timestamp": "2025-09-30T20:59:12.433Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection resistance",
+      "status": "PASS",
+      "message": "SQL injection properly blocked",
+      "details": "Payload: '; DROP TABLE users;...",
+      "timestamp": "2025-09-30T20:59:12.946Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection resistance",
+      "status": "PASS",
+      "message": "SQL injection properly blocked",
+      "details": "Payload: ' UNION SELECT NULL,...",
+      "timestamp": "2025-09-30T20:59:13.461Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection resistance",
+      "status": "PASS",
+      "message": "SQL injection properly blocked",
+      "details": "Payload: ' OR EXISTS(SELECT *...",
+      "timestamp": "2025-09-30T20:59:13.981Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection resistance",
+      "status": "PASS",
+      "message": "SQL injection properly blocked",
+      "details": "Payload: ' AND (SELECT COUNT(...",
+      "timestamp": "2025-09-30T20:59:14.496Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection resistance",
+      "status": "PASS",
+      "message": "SQL injection properly blocked",
+      "details": "Payload: ' AND (SELECT SUBSTR...",
+      "timestamp": "2025-09-30T20:59:15.018Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection resistance",
+      "status": "PASS",
+      "message": "SQL injection properly blocked",
+      "details": "Payload: ' OR (SELECT COUNT(*...",
+      "timestamp": "2025-09-30T20:59:15.531Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "username command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: username",
+      "timestamp": "2025-09-30T20:59:16.047Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "username command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: username",
+      "timestamp": "2025-09-30T20:59:16.455Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "username command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: username",
+      "timestamp": "2025-09-30T20:59:16.873Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "username command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: username",
+      "timestamp": "2025-09-30T20:59:17.278Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "username command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: username",
+      "timestamp": "2025-09-30T20:59:17.686Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "projectId command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: projectId",
+      "timestamp": "2025-09-30T20:59:18.110Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "projectId command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: projectId",
+      "timestamp": "2025-09-30T20:59:18.529Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "projectId command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: projectId",
+      "timestamp": "2025-09-30T20:59:18.942Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "projectId command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: projectId",
+      "timestamp": "2025-09-30T20:59:19.354Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "projectId command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: projectId",
+      "timestamp": "2025-09-30T20:59:19.776Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "cityName command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: cityName",
+      "timestamp": "2025-09-30T20:59:20.203Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "cityName command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: cityName",
+      "timestamp": "2025-09-30T20:59:20.682Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "cityName command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: cityName",
+      "timestamp": "2025-09-30T20:59:21.090Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "cityName command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: cityName",
+      "timestamp": "2025-09-30T20:59:21.496Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "COMMAND_INJECTION",
+      "test": "cityName command injection",
+      "status": "PASS",
+      "message": "Command injection blocked",
+      "details": "Field: cityName",
+      "timestamp": "2025-09-30T20:59:21.902Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "XSS prevention in login",
+      "status": "PASS",
+      "message": "XSS payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:22.311Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "XSS prevention in login",
+      "status": "PASS",
+      "message": "XSS payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:22.621Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "XSS prevention in login",
+      "status": "PASS",
+      "message": "XSS payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:22.930Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "XSS prevention in login",
+      "status": "PASS",
+      "message": "XSS payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:23.243Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "XSS prevention in login",
+      "status": "PASS",
+      "message": "XSS payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:23.555Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "XSS prevention in login",
+      "status": "PASS",
+      "message": "XSS payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:23.870Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "XSS prevention in login",
+      "status": "PASS",
+      "message": "XSS payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:24.184Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "XSS prevention in login",
+      "status": "PASS",
+      "message": "XSS payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:24.496Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "XSS_SECURITY",
+      "test": "Error page XSS prevention",
+      "status": "PASS",
+      "message": "Error pages properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:24.810Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SSRF_SECURITY",
+      "test": "SSRF prevention",
+      "status": "PASS",
+      "message": "SSRF attempts properly blocked",
+      "details": "Payload: http://localhost:5432",
+      "timestamp": "2025-09-30T20:59:24.815Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SSRF_SECURITY",
+      "test": "SSRF prevention",
+      "status": "PASS",
+      "message": "SSRF attempts properly blocked",
+      "details": "Payload: http://127.0.0.1:22",
+      "timestamp": "2025-09-30T20:59:25.326Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "SSRF_SECURITY",
+      "test": "SSRF prevention",
+      "status": "PASS",
+      "message": "SSRF attempts properly blocked",
+      "details": "Payload: http://169.254.169.254/latest/meta-data/",
+      "timestamp": "2025-09-30T20:59:25.847Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "PATH_TRAVERSAL",
+      "test": "Path traversal prevention",
+      "status": "PASS",
+      "message": "Path traversal blocked",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:26.362Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "PATH_TRAVERSAL",
+      "test": "Path traversal prevention",
+      "status": "PASS",
+      "message": "Path traversal blocked",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:26.678Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "PATH_TRAVERSAL",
+      "test": "Path traversal prevention",
+      "status": "PASS",
+      "message": "Path traversal blocked",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:26.990Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "TEMPLATE_INJECTION",
+      "test": "Template injection prevention",
+      "status": "PASS",
+      "message": "Template injection blocked",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:27.299Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "TEMPLATE_INJECTION",
+      "test": "Template injection prevention",
+      "status": "PASS",
+      "message": "Template injection blocked",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:27.611Z"
+    },
+    {
+      "layer": "LAYER 5: INPUT VALIDATION & INJECTION SECURITY",
+      "category": "TEMPLATE_INJECTION",
+      "test": "Template injection prevention",
+      "status": "PASS",
+      "message": "Template injection blocked",
+      "details": "",
+      "timestamp": "2025-09-30T20:59:27.922Z"
+    }
+  ]
+}

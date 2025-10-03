@@ -1,0 +1,307 @@
+{
+  "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+  "totalTests": 30,
+  "passedTests": 21,
+  "failedTests": 0,
+  "warningTests": 0,
+  "criticalFailures": 0,
+  "score": "70.0",
+  "authenticatedTenants": 3,
+  "tenantDetails": [
+    {
+      "name": "TechCorp_Amsterdam",
+      "project": "techcorp",
+      "city": "Amsterdam",
+      "projectCityId": "cmg6pefd50001ytrsg7bydkk7"
+    },
+    {
+      "name": "TechCorp_Rotterdam",
+      "project": "techcorp",
+      "city": "Rotterdam",
+      "projectCityId": "cmg6pefda0003ytrs7jb0xbrp"
+    },
+    {
+      "name": "SafeAccess_Amsterdam",
+      "project": "safeaccess",
+      "city": "Amsterdam",
+      "projectCityId": "cmg6pefeb000nytrswzmtrcow"
+    }
+  ],
+  "results": [
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TENANT_AUTH",
+      "test": "Valid authentication - TechCorp_Amsterdam",
+      "status": "PASS",
+      "message": "Tenant authentication successful",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:55.314Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_STRUCTURE",
+      "test": "JWT tenant binding - TechCorp_Amsterdam",
+      "status": "PASS",
+      "message": "Token contains tenant-specific information",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:55.316Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_SECURITY",
+      "test": "JWT payload security - TechCorp_Amsterdam",
+      "status": "PASS",
+      "message": "Token does not expose sensitive data",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:55.317Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TENANT_AUTH",
+      "test": "Valid authentication - TechCorp_Rotterdam",
+      "status": "PASS",
+      "message": "Tenant authentication successful",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:57.643Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_STRUCTURE",
+      "test": "JWT tenant binding - TechCorp_Rotterdam",
+      "status": "PASS",
+      "message": "Token contains tenant-specific information",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:57.645Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_SECURITY",
+      "test": "JWT payload security - TechCorp_Rotterdam",
+      "status": "PASS",
+      "message": "Token does not expose sensitive data",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:57.646Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TENANT_AUTH",
+      "test": "Valid authentication - SafeAccess_Amsterdam",
+      "status": "PASS",
+      "message": "Tenant authentication successful",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:59.955Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_STRUCTURE",
+      "test": "JWT tenant binding - SafeAccess_Amsterdam",
+      "status": "PASS",
+      "message": "Token contains tenant-specific information",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:59.957Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_SECURITY",
+      "test": "JWT payload security - SafeAccess_Amsterdam",
+      "status": "PASS",
+      "message": "Token does not expose sensitive data",
+      "details": "",
+      "timestamp": "2025-10-01T13:31:59.957Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "CROSS_TENANT_AUTH",
+      "test": "Cross-tenant credential rejection",
+      "status": "PASS",
+      "message": "Mixed tenant credentials properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:02.015Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Token response format - TechCorp_Amsterdam",
+      "status": "INFO",
+      "message": "Token returns non-array response",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:04.562Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Cross-tenant access attempt - TechCorp_Amsterdam → TechCorp_Rotterdam",
+      "status": "INFO",
+      "message": "Cross-tenant access returned status: 200",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:06.190Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Cross-tenant access attempt - TechCorp_Amsterdam → SafeAccess_Amsterdam",
+      "status": "INFO",
+      "message": "Cross-tenant access returned status: 200",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:07.505Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Token response format - TechCorp_Rotterdam",
+      "status": "INFO",
+      "message": "Token returns non-array response",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:08.782Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Cross-tenant access attempt - TechCorp_Rotterdam → TechCorp_Amsterdam",
+      "status": "INFO",
+      "message": "Cross-tenant access returned status: 200",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:10.422Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Cross-tenant access attempt - TechCorp_Rotterdam → SafeAccess_Amsterdam",
+      "status": "INFO",
+      "message": "Cross-tenant access returned status: 200",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:11.685Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Token response format - SafeAccess_Amsterdam",
+      "status": "INFO",
+      "message": "Token returns non-array response",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:12.998Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Cross-tenant access attempt - SafeAccess_Amsterdam → TechCorp_Amsterdam",
+      "status": "INFO",
+      "message": "Cross-tenant access returned status: 200",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:14.579Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_ISOLATION",
+      "test": "Cross-tenant access attempt - SafeAccess_Amsterdam → TechCorp_Rotterdam",
+      "status": "INFO",
+      "message": "Cross-tenant access returned status: 200",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:15.825Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Invalid token rejection - invalid_token_123...",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:17.055Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Invalid token rejection - Bearer invalid_token...",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:17.874Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Invalid token rejection - eyJhbGciOiJIUzI1NiIs...",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:18.686Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Invalid token rejection - eyJhbGciOiJIUzI1NiIs...",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:19.503Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Invalid token rejection - eyJ0eXAiOiJKV1QiLCJh...",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:20.324Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Invalid token rejection - ...",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:21.157Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_PLACEMENT",
+      "test": "Token placement security - query parameter",
+      "status": "PASS",
+      "message": "Token in query parameter properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:21.979Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_PLACEMENT",
+      "test": "Token placement security - body parameter",
+      "status": "PASS",
+      "message": "Token in body parameter properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:22.808Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_PLACEMENT",
+      "test": "Token placement security - custom header",
+      "status": "PASS",
+      "message": "Token in custom header properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:23.629Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_PLACEMENT",
+      "test": "Token placement security - cookie",
+      "status": "PASS",
+      "message": "Token in cookie properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:24.444Z"
+    },
+    {
+      "section": "SECTION 1: TENANT AUTHENTICATION & TOKEN ISOLATION",
+      "category": "TOKEN_REQUIRED",
+      "test": "Missing token rejection",
+      "status": "PASS",
+      "message": "Requests without tokens properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:32:25.265Z"
+    }
+  ],
+  "recommendations": [
+    "Address authentication warnings",
+    "Review token validation mechanisms",
+    "Consider proceeding to Section 2 with caution"
+  ]
+}

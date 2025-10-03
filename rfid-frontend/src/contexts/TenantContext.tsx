@@ -1,5 +1,5 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { fetchProjects, fetchCitiesByProject, type Project, type City } from '../services/tenantApi'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
+import { fetchProjects, fetchCitiesByProject, clearTenantCache, type Project, type City } from '../services/tenantApi'
 
 type TenantMode = 'city-only' | 'project-city'
 
@@ -14,7 +14,7 @@ type TenantContextValue = {
   cities: City[]
   selection: TenantSelection
   setSelection: (sel: TenantSelection) => void
-  refresh: () => Promise<void>
+  refresh: (forceClearCache?: boolean) => Promise<void>
 }
 
 const defaultValue: TenantContextValue = {
@@ -33,6 +33,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const mode: TenantMode = (import.meta.env.VITE_TENANT_MODE || 'city-only') === 'project-city' ? 'project-city' : 'city-only'
   const [projects, setProjects] = useState<Project[]>([])
   const [cities, setCities] = useState<City[]>([])
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [selection, setSelectionState] = useState<TenantSelection>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
@@ -52,8 +53,15 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [])
 
-  const refresh = useCallback(async () => {
-    if (mode !== 'project-city') return
+  const refresh = useCallback(async (forceClearCache = false) => {
+    if (mode !== 'project-city' || isRefreshing) return
+    
+    setIsRefreshing(true)
+    
+    if (forceClearCache) {
+      clearTenantCache()
+    }
+    
     try {
       const projs = await fetchProjects()
       setProjects(projs)
@@ -81,8 +89,10 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (process.env.NODE_ENV !== 'test') {
         console.error('Tenant refresh failed', error)
       }
+    } finally {
+      setIsRefreshing(false)
     }
-  }, [mode, selection.project, selection.cityId, setSelection])
+  }, [mode, selection.project, selection.cityId, setSelection, isRefreshing])
 
   useEffect(() => {
     refresh().catch((e) => console.warn('Tenant refresh failed', e))

@@ -1,0 +1,225 @@
+{
+  "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+  "totalTests": 23,
+  "passedTests": 18,
+  "failedTests": 0,
+  "warningTests": 2,
+  "criticalFailures": 0,
+  "score": "82.6",
+  "testedTokens": 2,
+  "results": [
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "JWT_SECURITY",
+      "test": "JWT algorithm security - Primary_User",
+      "status": "PASS",
+      "message": "JWT uses HMAC algorithm: HS256",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.209Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "JWT_SECURITY",
+      "test": "JWT expiration - Primary_User",
+      "status": "PASS",
+      "message": "Token expires in 1.0 hours",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.222Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "JWT_SECURITY",
+      "test": "JWT payload security - Primary_User",
+      "status": "PASS",
+      "message": "Token payload does not contain obvious sensitive data",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.224Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "JWT_SECURITY",
+      "test": "JWT claims - Primary_User",
+      "status": "WARN",
+      "message": "Missing standard claims: sub",
+      "details": "Standard JWT claims help with security and debugging",
+      "timestamp": "2025-10-01T15:56:14.227Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "JWT_SECURITY",
+      "test": "JWT algorithm security - Secondary_User",
+      "status": "PASS",
+      "message": "JWT uses HMAC algorithm: HS256",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.252Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "JWT_SECURITY",
+      "test": "JWT expiration - Secondary_User",
+      "status": "PASS",
+      "message": "Token expires in 1.0 hours",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.268Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "JWT_SECURITY",
+      "test": "JWT payload security - Secondary_User",
+      "status": "PASS",
+      "message": "Token payload does not contain obvious sensitive data",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.271Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "JWT_SECURITY",
+      "test": "JWT claims - Secondary_User",
+      "status": "WARN",
+      "message": "Missing standard claims: sub",
+      "details": "Standard JWT claims help with security and debugging",
+      "timestamp": "2025-10-01T15:56:14.276Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Modified signature detection",
+      "status": "PASS",
+      "message": "Modified token signature properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.300Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Modified payload detection",
+      "status": "PASS",
+      "message": "All 4 payload manipulation attacks properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.331Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "TOKEN_MANIPULATION",
+      "test": "Algorithm confusion prevention",
+      "status": "PASS",
+      "message": "Algorithm confusion attack properly blocked",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:14.339Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "SESSION_TIMEOUT",
+      "test": "Valid token response",
+      "status": "INFO",
+      "message": "Valid token returned status: 403",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:16.396Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "SESSION_TIMEOUT",
+      "test": "Token lifetime - Primary_User",
+      "status": "PASS",
+      "message": "Token lifetime is 60 minutes - good security practice",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:16.406Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "SESSION_TIMEOUT",
+      "test": "Token lifetime - Secondary_User",
+      "status": "PASS",
+      "message": "Token lifetime is 60 minutes - good security practice",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:16.411Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "CONCURRENT_SESSIONS",
+      "test": "Multiple session creation",
+      "status": "INFO",
+      "message": "Successfully created 3 concurrent sessions for same user",
+      "details": "System allows multiple concurrent sessions",
+      "timestamp": "2025-10-01T15:56:20.345Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "CONCURRENT_SESSIONS",
+      "test": "Concurrent session validity",
+      "status": "INFO",
+      "message": "All 3 concurrent sessions remain valid",
+      "details": "Multiple sessions allowed - ensure proper session management",
+      "timestamp": "2025-10-01T15:56:22.076Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "INVALID_TOKEN",
+      "test": "Invalid token rejection - empty token",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:22.090Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "INVALID_TOKEN",
+      "test": "Invalid token rejection - non-JWT token",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:22.612Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "INVALID_TOKEN",
+      "test": "Invalid token rejection - malformed Bearer token",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:23.123Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "INVALID_TOKEN",
+      "test": "Invalid token rejection - JWT with invalid signature",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:23.652Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "INVALID_TOKEN",
+      "test": "Invalid token rejection - none algorithm JWT",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:24.166Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "INVALID_TOKEN",
+      "test": "Invalid token rejection - malformed JWT structure",
+      "status": "PASS",
+      "message": "Invalid token properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:24.693Z"
+    },
+    {
+      "section": "SECTION 5: SESSION MANAGEMENT TESTING",
+      "category": "INVALID_TOKEN",
+      "test": "Missing authorization header",
+      "status": "PASS",
+      "message": "Missing authorization properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T15:56:25.215Z"
+    }
+  ],
+  "recommendations": [
+    "Address session management warnings",
+    "Review JWT token security implementation",
+    "Implement proper session timeout mechanisms",
+    "Complete multi-tenant security testing with good overall results"
+  ]
+}

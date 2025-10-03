@@ -1,0 +1,19 @@
+{
+  "name": "asset-access-control",
+  "version": "1.0.0",
+  "description": "[![CI](https://github.com/MadihDev/asset-access-control/actions/workflows/ci.yml/badge.svg)](https://github.com/MadihDev/asset-access-control/actions/workflows/ci.yml)",
+  "main": "api-surface-security-test.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "colors": "^1.4.0"
+  }
+}

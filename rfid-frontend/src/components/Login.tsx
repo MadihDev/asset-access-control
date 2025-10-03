@@ -60,7 +60,9 @@ const Login: React.FC = () => {
       
       if (mode === 'project-city') {
         if (!formData.project && !selection.project) {
-          validationErrors.push('Project selection is required')
+          validationErrors.push('Project name is required')
+        } else if (formData.project && !/^[a-zA-Z0-9]+$/.test(formData.project)) {
+          validationErrors.push('Project name must contain only letters and numbers (no spaces or special characters)')
         }
         if (!formData.cityId) {
           validationErrors.push('City selection is required')
@@ -275,19 +277,17 @@ const Login: React.FC = () => {
               <>
                 <div>
                   <label htmlFor="project" className="block text-sm font-medium text-gray-700">Project</label>
-                  <select
+                  <input
                     id="project"
                     name="project"
+                    type="text"
                     required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. techcorp, safeaccess, securebuildings"
                     value={formData.project || selection.project || ''}
                     onChange={handleChange}
-                  >
-                    <option value="" disabled>Select a project</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.slug || p.id}>{p.name}</option>
-                    ))}
-                  </select>
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Enter project slug (see credentials below for examples).</p>
                 </div>
                 <div>
                   <label htmlFor="cityId" className="block text-sm font-medium text-gray-700">City</label>
@@ -298,14 +298,13 @@ const Login: React.FC = () => {
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     value={formData.cityId}
                     onChange={handleChange}
-                    disabled={!formData.project && !selection.project}
                   >
                     <option value="" disabled>Select a city</option>
                     {cities.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
-                  <p className="mt-1 text-xs text-gray-500">Choose your project then city.</p>
+                  <p className="mt-1 text-xs text-gray-500">Enter project slug first, then select city.</p>
                 </div>
               </>
             ) : (
@@ -337,11 +336,11 @@ const Login: React.FC = () => {
                 autoComplete="username"
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g. admin, manager, user1"
+                placeholder="e.g. techcorpadmin, secureadmin"
                 value={formData.username}
                 onChange={handleChange}
               />
-              <p className="mt-1 text-xs text-gray-500">Use your username (not email).</p>
+              <p className="mt-1 text-xs text-gray-500">Use your username (not email). See credentials below.</p>
             </div>
 
             <div>
@@ -378,37 +377,46 @@ const Login: React.FC = () => {
 
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-gray-50 rounded-md">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">✅ ALPHANUMERIC Credentials (Updated):</h3>
             {mode === 'project-city' ? (
               <div className="text-xs text-gray-600 space-y-2">
                 <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-400">
-                  <div className="font-semibold text-blue-800 mb-1">🇳🇱 PerfectIT Solutions</div>
-                  <div><strong>Amsterdam Admin:</strong> username=amsterdamadmin, password=Password123!, project=perfectit-solutions, city=Amsterdam</div>
-                  <div><strong>Rotterdam Admin:</strong> username=rotterdamadmin, password=Password123!, project=perfectit-solutions, city=Rotterdam</div>
+                  <div className="font-semibold text-blue-800 mb-1">� TechCorp Solutions (Amsterdam)</div>
+                  <div><strong>TechCorp Admin:</strong> username=techcorpadmin, password=demo123, project=techcorp, city=Amsterdam</div>
+                  <div><strong>TechCorp User:</strong> username=techcorpuser, password=demo123, project=techcorp, city=Amsterdam</div>
                 </div>
                 <div className="bg-green-50 p-2 rounded border-l-2 border-green-400">
-                  <div className="font-semibold text-green-800 mb-1">🏢 Acme Corporation</div>
-                  <div><strong>Acme Admin:</strong> username=acmeadmin, password=password123, project=Acme Corporation, city=Amsterdam</div>
-                  <div><strong>Acme User:</strong> username=acmeuser, password=password123, project=Acme Corporation, city=Utrecht</div>
+                  <div className="font-semibold text-green-800 mb-1">🚢 SafeAccess Ltd (Rotterdam)</div>
+                  <div><strong>SafeAccess Admin:</strong> username=safeaccessadmin, password=demo123, project=safeaccess, city=Rotterdam</div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500 italic">
-                  ℹ️ All usernames are now alphanumeric-only (no underscores or special characters)
+                <div className="bg-purple-50 p-2 rounded border-l-2 border-purple-400">
+                  <div className="font-semibold text-purple-800 mb-1">🏗️ SecureBuildings Inc (Amsterdam)</div>
+                  <div><strong>SecureBuildings Admin:</strong> username=secureadmin, password=demo123, project=securebuildings, city=Amsterdam</div>
+                </div>
+                <div className="mt-2 text-xs text-green-600 font-medium italic">
+                  ✅ All usernames are now ALPHANUMERIC (no underscores or special characters)
+                </div>
+                <div className="mt-1 text-xs text-blue-600 font-medium italic">
+                  📝 Project is now TEXT INPUT - type the project slug (e.g. "techcorp")
                 </div>
               </div>
             ) : (
               <div className="text-xs text-gray-600 space-y-2">
                 <div className="bg-blue-50 p-2 rounded border-l-2 border-blue-400">
-                  <div className="font-semibold text-blue-800 mb-1">🇳🇱 PerfectIT Solutions</div>
-                  <div><strong>Amsterdam Admin:</strong> username=amsterdamadmin, password=Password123!, city=Amsterdam</div>
-                  <div><strong>Rotterdam Admin:</strong> username=rotterdamadmin, password=Password123!, city=Rotterdam</div>
+                  <div className="font-semibold text-blue-800 mb-1">� TechCorp Solutions</div>
+                  <div><strong>TechCorp Admin:</strong> username=techcorpadmin, password=demo123, city=Amsterdam</div>
+                  <div><strong>TechCorp User:</strong> username=techcorpuser, password=demo123, city=Amsterdam</div>
                 </div>
                 <div className="bg-green-50 p-2 rounded border-l-2 border-green-400">
-                  <div className="font-semibold text-green-800 mb-1">🏢 Acme Corporation</div>
-                  <div><strong>Acme Admin:</strong> username=acmeadmin, password=password123, city=Amsterdam</div>
-                  <div><strong>Acme User:</strong> username=acmeuser, password=password123, city=Utrecht</div>
+                  <div className="font-semibold text-green-800 mb-1">🚢 SafeAccess Ltd</div>
+                  <div><strong>SafeAccess Admin:</strong> username=safeaccessadmin, password=demo123, city=Rotterdam</div>
                 </div>
-                <div className="mt-2 text-xs text-gray-500 italic">
-                  ℹ️ All usernames are now alphanumeric-only (no underscores or special characters)
+                <div className="bg-purple-50 p-2 rounded border-l-2 border-purple-400">
+                  <div className="font-semibold text-purple-800 mb-1">🏗️ SecureBuildings Inc</div>
+                  <div><strong>SecureBuildings Admin:</strong> username=secureadmin, password=demo123, city=Amsterdam</div>
+                </div>
+                <div className="mt-2 text-xs text-green-600 font-medium italic">
+                  ✅ All usernames are now ALPHANUMERIC (no underscores or special characters)
                 </div>
               </div>
             )}

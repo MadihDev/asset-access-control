@@ -1,0 +1,341 @@
+{
+  "section": "SECTION 4: API SECURITY TESTING",
+  "totalTests": 36,
+  "passedTests": 27,
+  "failedTests": 0,
+  "warningTests": 1,
+  "criticalFailures": 0,
+  "score": "76.4",
+  "results": [
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in auth - ' OR '1'='1...",
+      "status": "PASS",
+      "message": "SQL injection properly blocked in authentication",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:21.955Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in auth - ' OR 1=1--...",
+      "status": "PASS",
+      "message": "SQL injection properly blocked in authentication",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:22.985Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in auth - '; DROP TABLE users;...",
+      "status": "PASS",
+      "message": "SQL injection properly blocked in authentication",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:24.023Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in auth - ' UNION SELECT * FRO...",
+      "status": "PASS",
+      "message": "SQL injection properly blocked in authentication",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:25.057Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in auth - ' AND 1=0 UNION SELE...",
+      "status": "PASS",
+      "message": "SQL injection properly blocked in authentication",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:26.084Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - ' OR '1'='1...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:27.359Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - ' OR 1=1--...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:28.215Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - '; DROP TABLE users;...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:29.085Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - ' OR '1'='1...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:30.204Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - ' OR 1=1--...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:31.118Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - '; DROP TABLE users;...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:31.994Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - ' OR '1'='1...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:32.907Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - ' OR 1=1--...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:33.797Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "SQL_INJECTION",
+      "test": "SQL injection prevention in /user - '; DROP TABLE users;...",
+      "status": "PASS",
+      "message": "SQL injection payload properly sanitized",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:34.669Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "XSS_PREVENTION",
+      "test": "XSS validation in user creation - <script>alert(\"XSS\")</script>...",
+      "status": "PASS",
+      "message": "XSS payload properly validated and rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:35.560Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "XSS_PREVENTION",
+      "test": "XSS validation in user creation - <img src=x onerror=alert(\"XSS\"...",
+      "status": "PASS",
+      "message": "XSS payload properly validated and rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:36.580Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "XSS_PREVENTION",
+      "test": "XSS validation in user creation - javascript:alert(\"XSS\")...",
+      "status": "PASS",
+      "message": "XSS payload properly validated and rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:37.618Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "XSS_PREVENTION",
+      "test": "XSS validation in user creation - <svg onload=alert(\"XSS\")>...",
+      "status": "PASS",
+      "message": "XSS payload properly validated and rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:38.662Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "XSS_PREVENTION",
+      "test": "XSS validation in user creation - \"><script>alert(\"XSS\")</script...",
+      "status": "PASS",
+      "message": "XSS payload properly validated and rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:39.711Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "XSS_PREVENTION",
+      "test": "XSS attempt in location - <script>alert(\"XSS\")</script>...",
+      "status": "INFO",
+      "message": "XSS attempt returned status: 500",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:40.801Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "XSS_PREVENTION",
+      "test": "XSS attempt in location - <img src=x onerror=alert(\"XSS\"...",
+      "status": "INFO",
+      "message": "XSS attempt returned status: 500",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:41.831Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "XSS_PREVENTION",
+      "test": "XSS attempt in location - javascript:alert(\"XSS\")...",
+      "status": "INFO",
+      "message": "XSS attempt returned status: 500",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:42.859Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "INPUT_VALIDATION",
+      "test": "Data type validation - username as number",
+      "status": "PASS",
+      "message": "Invalid data type properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:43.888Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "INPUT_VALIDATION",
+      "test": "Data type validation - null password",
+      "status": "PASS",
+      "message": "Invalid data type properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:44.721Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "INPUT_VALIDATION",
+      "test": "Data type validation - invalid role value",
+      "status": "PASS",
+      "message": "Invalid data type properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:45.549Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "INPUT_VALIDATION",
+      "test": "Length validation - extremely long username",
+      "status": "PASS",
+      "message": "Excessively long input properly rejected",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:46.410Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "INPUT_VALIDATION",
+      "test": "Length validation - extremely long location name",
+      "status": "INFO",
+      "message": "Length validation returned status: 500",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:47.287Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "RATE_LIMITING",
+      "test": "Authentication rate limiting",
+      "status": "PASS",
+      "message": "Rate limiting active - 6/20 requests limited",
+      "details": "6 requests returned 429/503 status codes",
+      "timestamp": "2025-10-01T13:46:48.578Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "RATE_LIMITING",
+      "test": "API rate limiting weakness",
+      "status": "WARN",
+      "message": "No apparent API rate limiting - requests processed very quickly",
+      "details": "15 API requests completed in 332ms",
+      "timestamp": "2025-10-01T13:46:51.924Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "ERROR_HANDLING",
+      "test": "Error handling - nonexistent user",
+      "status": "INFO",
+      "message": "Error handling returned status: 429",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:51.933Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "ERROR_HANDLING",
+      "test": "Error handling - wrong password",
+      "status": "INFO",
+      "message": "Error handling returned status: 429",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:52.745Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "ERROR_HANDLING",
+      "test": "Error handling - wrong project",
+      "status": "INFO",
+      "message": "Error handling returned status: 429",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:53.772Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "ERROR_HANDLING",
+      "test": "Error handling - wrong city",
+      "status": "INFO",
+      "message": "Error handling returned status: 429",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:54.593Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "ERROR_HANDLING",
+      "test": "Malformed request security - invalid JSON",
+      "status": "PASS",
+      "message": "Malformed request error properly handled",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:55.497Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "ERROR_HANDLING",
+      "test": "Malformed request security - incomplete JSON",
+      "status": "PASS",
+      "message": "Malformed request error properly handled",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:56.336Z"
+    },
+    {
+      "section": "SECTION 4: API SECURITY TESTING",
+      "category": "ERROR_HANDLING",
+      "test": "Malformed request security - null data",
+      "status": "PASS",
+      "message": "Malformed request error properly handled",
+      "details": "",
+      "timestamp": "2025-10-01T13:46:57.166Z"
+    }
+  ],
+  "recommendations": [
+    "Address API security warnings",
+    "Implement rate limiting if missing",
+    "Review error message security",
+    "Strengthen input validation"
+  ]
+}

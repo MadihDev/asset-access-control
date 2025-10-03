@@ -1,0 +1,84 @@
+{
+  "timestamp": "2025-09-30T19:21:16.173Z",
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "warnings": 2,
+    "total": 9,
+    "score": 78
+  },
+  "tests": [
+    {
+      "category": "HISTORICAL_ANALYSIS",
+      "test": "Access log retrieval",
+      "status": "WARN",
+      "message": "Error accessing historical data",
+      "details": "Request failed with status code 404",
+      "timestamp": "2025-09-30T19:21:15.319Z"
+    },
+    {
+      "category": "AUDIT_VALIDATION",
+      "test": "Audit trail completeness",
+      "status": "PASS",
+      "message": "4/4 critical actions covered",
+      "details": "Covered: CREATE, UPDATE, DELETE, LOGIN, Missing: ",
+      "timestamp": "2025-09-30T19:21:15.453Z"
+    },
+    {
+      "category": "AUDIT_VALIDATION",
+      "test": "Audit data integrity",
+      "status": "PASS",
+      "message": "All audit entries have required fields",
+      "details": null,
+      "timestamp": "2025-09-30T19:21:15.454Z"
+    },
+    {
+      "category": "AUDIT_VALIDATION",
+      "test": "Audit retention compliance",
+      "status": "PASS",
+      "message": "Oldest audit log: 23 days old",
+      "details": null,
+      "timestamp": "2025-09-30T19:21:15.455Z"
+    },
+    {
+      "category": "PERMISSION_ANALYSIS",
+      "test": "Admin privilege distribution",
+      "status": "WARN",
+      "message": "33.3% of users have ADMIN privileges (2/6)",
+      "details": "High percentage of admin users may indicate over-privileging",
+      "timestamp": "2025-09-30T19:21:15.793Z"
+    },
+    {
+      "category": "PERMISSION_ANALYSIS",
+      "test": "User data tenant isolation",
+      "status": "PASS",
+      "message": "Users properly isolated to single tenant context",
+      "details": "Tenant contexts visible: 1",
+      "timestamp": "2025-09-30T19:21:15.793Z"
+    },
+    {
+      "category": "PERMISSION_ANALYSIS",
+      "test": "Inactive user cleanup",
+      "status": "PASS",
+      "message": "No inactive users found with permissions",
+      "details": null,
+      "timestamp": "2025-09-30T19:21:15.794Z"
+    },
+    {
+      "category": "DATA_INTEGRITY",
+      "test": "API endpoint consistency",
+      "status": "PASS",
+      "message": "3/3 endpoints properly secured",
+      "details": null,
+      "timestamp": "2025-09-30T19:21:16.167Z"
+    },
+    {
+      "category": "DATA_INTEGRITY",
+      "test": "Response format validation",
+      "status": "PASS",
+      "message": "All accessible endpoints return consistent JSON format",
+      "details": "Standardized API response structure confirmed",
+      "timestamp": "2025-09-30T19:21:16.168Z"
+    }
+  ]
+}

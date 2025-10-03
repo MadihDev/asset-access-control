@@ -1,0 +1,95 @@
+{
+  "timestamp": "2025-09-29T20:43:31.929Z",
+  "summary": {
+    "totalTests": 14,
+    "totalPassed": 0,
+    "totalFailed": 14,
+    "successRate": 0
+  },
+  "layers": {
+    "layer1": {
+      "passed": 0,
+      "failed": 5,
+      "details": [
+        {
+          "test": "SQL Injection in Login",
+          "status": "TIMEOUT",
+          "expected": [
+            400,
+            401,
+            422
+          ],
+          "description": "Should reject SQL injection attempts",
+          "passed": false
+        },
+        {
+          "test": "XSS in Login",
+          "status": "TIMEOUT",
+          "expected": [
+            400,
+            401,
+            422
+          ],
+          "description": "Should sanitize XSS attempts",
+          "passed": false
+        },
+        {
+          "test": "Invalid Credentials",
+          "status": "TIMEOUT",
+          "expected": [
+            401,
+            403
+          ],
+          "description": "Should reject invalid credentials",
+          "passed": false
+        },
+        {
+          "test": "Missing Required Fields",
+          "status": "TIMEOUT",
+          "expected": [
+            400,
+            422
+          ],
+          "description": "Should validate required fields",
+          "passed": false
+        },
+        {
+          "test": "Protected Endpoint Without Auth",
+          "status": "TIMEOUT",
+          "expected": [
+            401,
+            403
+          ],
+          "description": "Should protect endpoints requiring authentication",
+          "passed": false
+        }
+      ]
+    },
+    "layer2": {
+      "passed": 0,
+      "failed": 3,
+      "details": []
+    },
+    "layer3": {
+      "passed": 0,
+      "failed": 3,
+      "details": []
+    },
+    "layer4": {
+      "passed": 0,
+      "failed": 3,
+      "details": [
+        {
+          "test": "Rate Limiting Detection",
+          "status": 0,
+          "expected": [
+            401,
+            429
+          ],
+          "description": "Should implement rate limiting",
+          "passed": false
+        }
+      ]
+    }
+  }
+}

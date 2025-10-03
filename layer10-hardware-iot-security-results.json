@@ -1,0 +1,92 @@
+{
+  "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+  "totalTests": 9,
+  "passedTests": 1,
+  "failedTests": 0,
+  "warningTests": 4,
+  "score": "33.3",
+  "criticalVulnerabilities": 0,
+  "results": [
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "RFID_HARDWARE",
+      "test": "RFID hardware testing prerequisites",
+      "status": "WARN",
+      "message": "No authentication token available",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:06.820Z"
+    },
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "IOT_AUTHENTICATION",
+      "test": "Device registration authentication",
+      "status": "PASS",
+      "message": "Device registration requires authentication",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:06.833Z"
+    },
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "IOT_AUTHENTICATION",
+      "test": "Device authentication endpoint",
+      "status": "INFO",
+      "message": "Device authentication endpoint not found",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:07.663Z"
+    },
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "IOT_AUTHENTICATION",
+      "test": "Device certificate endpoint",
+      "status": "INFO",
+      "message": "Device certificate validation endpoint not found",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:08.491Z"
+    },
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "WIRELESS_SECURITY",
+      "test": "Wireless status endpoint",
+      "status": "INFO",
+      "message": "Wireless status endpoint not found",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:09.317Z"
+    },
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "WIRELESS_SECURITY",
+      "test": "WiFi configuration endpoint",
+      "status": "INFO",
+      "message": "WiFi configuration endpoint not found",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:10.137Z"
+    },
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "TAMPER_DETECTION",
+      "test": "Tamper detection testing prerequisites",
+      "status": "WARN",
+      "message": "No authentication token available",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:10.951Z"
+    },
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "FIRMWARE_SECURITY",
+      "test": "Firmware security testing prerequisites",
+      "status": "WARN",
+      "message": "No authentication token available",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:10.953Z"
+    },
+    {
+      "layer": "LAYER 10: HARDWARE/IOT SECURITY",
+      "category": "HARDWARE_ENCRYPTION",
+      "test": "Hardware encryption testing prerequisites",
+      "status": "WARN",
+      "message": "No authentication token available",
+      "details": "",
+      "timestamp": "2025-09-30T21:20:10.954Z"
+    }
+  ]
+}

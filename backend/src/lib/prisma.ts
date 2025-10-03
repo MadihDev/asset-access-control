@@ -1,7 +1,3 @@
-import * as Prisma from '@prisma/client'
-
-// Single Prisma client instance for the whole app
-// Avoids exhausting DB connections in dev with hot reload
-const prisma = new (Prisma as any).PrismaClient()
-
-export default prisma
+// Enhanced Prisma client with security features
+// This replaces the basic Prisma client with enhanced security monitoring
+export { default, enhancedDb } from '../config/enhancedDatabase'

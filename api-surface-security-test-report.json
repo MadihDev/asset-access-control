@@ -1,0 +1,196 @@
+{
+  "timestamp": "2025-09-30T18:38:27.539Z",
+  "summary": {
+    "passed": 23,
+    "failed": 0,
+    "warnings": 0,
+    "total": 23,
+    "score": 100
+  },
+  "tests": [
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "SQL Injection",
+      "status": "PASS",
+      "message": "SQL payload properly rejected: '; DROP TABLE users;...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.274Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "SQL Injection",
+      "status": "PASS",
+      "message": "SQL payload properly rejected: ' OR '1'='1...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.285Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "SQL Injection",
+      "status": "PASS",
+      "message": "SQL payload properly rejected: admin'/*...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.291Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "SQL Injection",
+      "status": "PASS",
+      "message": "SQL payload properly rejected: 1' UNION SELECT NULL...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.301Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "SQL Injection",
+      "status": "PASS",
+      "message": "SQL payload properly rejected: '; UPDATE users SET ...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.308Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "XSS Prevention",
+      "status": "PASS",
+      "message": "XSS payload rejected: <script>alert('xss')...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.314Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "XSS Prevention",
+      "status": "PASS",
+      "message": "XSS payload rejected: javascript:alert('xs...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.323Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "XSS Prevention",
+      "status": "PASS",
+      "message": "XSS payload rejected: <img src=x onerror=a...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.331Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "XSS Prevention",
+      "status": "PASS",
+      "message": "XSS payload rejected: ';alert('xss');//...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.338Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "XSS Prevention",
+      "status": "PASS",
+      "message": "XSS payload rejected: <svg onload=alert('x...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.347Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "Command Injection",
+      "status": "PASS",
+      "message": "Command payload rejected: test; ls -la...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.355Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "Command Injection",
+      "status": "PASS",
+      "message": "Command payload rejected: test && cat /etc/pas...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.362Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "Command Injection",
+      "status": "PASS",
+      "message": "Command payload rejected: test | whoami...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.368Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "Command Injection",
+      "status": "PASS",
+      "message": "Command payload rejected: test`whoami`...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.375Z"
+    },
+    {
+      "category": "INPUT_VALIDATION",
+      "test": "Command Injection",
+      "status": "PASS",
+      "message": "Command payload rejected: test$(whoami)...",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.387Z"
+    },
+    {
+      "category": "AUTHENTICATION",
+      "test": "Invalid Credentials",
+      "status": "PASS",
+      "message": "Invalid credentials properly rejected with 400",
+      "details": null,
+      "timestamp": "2025-09-30T18:38:25.398Z"
+    },
+    {
+      "category": "AUTHENTICATION",
+      "test": "Missing Credentials",
+      "status": "PASS",
+      "message": "Empty credentials properly rejected",
+      "details": "Status: 400",
+      "timestamp": "2025-09-30T18:38:25.406Z"
+    },
+    {
+      "category": "AUTHENTICATION",
+      "test": "Invalid Token",
+      "status": "PASS",
+      "message": "Invalid token properly rejected with 401",
+      "details": null,
+      "timestamp": "2025-09-30T18:38:25.413Z"
+    },
+    {
+      "category": "AUTHENTICATION",
+      "test": "Missing Token",
+      "status": "PASS",
+      "message": "Protected endpoint properly secured with 401",
+      "details": null,
+      "timestamp": "2025-09-30T18:38:25.417Z"
+    },
+    {
+      "category": "RATE_LIMITING",
+      "test": "Brute Force Protection",
+      "status": "PASS",
+      "message": "Rate limiting active: 12/15 requests blocked",
+      "details": "Duration: 60ms, Success: 0, Errors: 3",
+      "timestamp": "2025-09-30T18:38:25.478Z"
+    },
+    {
+      "category": "ERROR_HANDLING",
+      "test": "Malformed JSON",
+      "status": "PASS",
+      "message": "Malformed JSON properly rejected with generic error",
+      "details": null,
+      "timestamp": "2025-09-30T18:38:27.517Z"
+    },
+    {
+      "category": "ERROR_HANDLING",
+      "test": "Non-existent Endpoint",
+      "status": "PASS",
+      "message": "Non-existent endpoint properly returns 404 without sensitive info",
+      "details": null,
+      "timestamp": "2025-09-30T18:38:27.530Z"
+    },
+    {
+      "category": "ERROR_HANDLING",
+      "test": "Large Input Handling",
+      "status": "PASS",
+      "message": "Large input properly rejected",
+      "details": "Status: 429",
+      "timestamp": "2025-09-30T18:38:27.536Z"
+    }
+  ]
+}

@@ -1,0 +1,236 @@
+{
+  "layer": "LAYER 8: API SECURITY",
+  "totalTests": 25,
+  "passedTests": 18,
+  "failedTests": 2,
+  "warningTests": 4,
+  "score": "80.0",
+  "criticalVulnerabilities": 0,
+  "results": [
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_ENDPOINTS",
+      "test": "Health endpoint security",
+      "status": "PASS",
+      "message": "Health endpoint does not expose sensitive information",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:37.045Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_ENDPOINTS",
+      "test": "API security headers",
+      "status": "PASS",
+      "message": "API endpoints include security headers",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:37.057Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_ENDPOINTS",
+      "test": "API base path protection",
+      "status": "PASS",
+      "message": "API base path properly protected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:37.582Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_ENDPOINTS",
+      "test": "HTTP methods security (/auth/login)",
+      "status": "PASS",
+      "message": "HTTP methods properly restricted",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:39.701Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_ENDPOINTS",
+      "test": "HTTP methods security (/user)",
+      "status": "PASS",
+      "message": "HTTP methods properly restricted",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:40.014Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_ENDPOINTS",
+      "test": "HTTP methods security (/rfid-key)",
+      "status": "PASS",
+      "message": "HTTP methods properly restricted",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:40.329Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_AUTH",
+      "test": "Authentication endpoint",
+      "status": "WARN",
+      "message": "Authentication returned status: 200",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:40.833Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_AUTH",
+      "test": "Invalid credentials handling",
+      "status": "PASS",
+      "message": "Invalid credentials properly rejected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:41.867Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_AUTH",
+      "test": "Authentication error disclosure",
+      "status": "WARN",
+      "message": "Authentication errors may disclose user information",
+      "details": "Use generic error messages",
+      "timestamp": "2025-09-30T21:12:41.869Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_RATE_LIMITING",
+      "test": "Authentication rate limiting",
+      "status": "WARN",
+      "message": "No rate limiting detected on authentication endpoint",
+      "details": "Consider implementing rate limiting",
+      "timestamp": "2025-09-30T21:12:44.159Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_RATE_LIMITING",
+      "test": "Rate limiting headers",
+      "status": "WARN",
+      "message": "Rate limiting headers not found",
+      "details": "Consider adding rate limit headers",
+      "timestamp": "2025-09-30T21:12:44.171Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_INPUT_VALIDATION",
+      "test": "SQL Injection input validation",
+      "status": "PASS",
+      "message": "SQL Injection properly rejected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:44.707Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_INPUT_VALIDATION",
+      "test": "XSS Script input validation",
+      "status": "PASS",
+      "message": "XSS Script properly rejected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:45.039Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_INPUT_VALIDATION",
+      "test": "Path Traversal input validation",
+      "status": "PASS",
+      "message": "Path Traversal properly rejected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:45.366Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_INPUT_VALIDATION",
+      "test": "Command Injection input validation",
+      "status": "PASS",
+      "message": "Command Injection properly rejected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:45.688Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_INPUT_VALIDATION",
+      "test": "XXE input validation",
+      "status": "PASS",
+      "message": "XXE properly rejected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:46.008Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_INPUT_VALIDATION",
+      "test": "JSON Injection input validation",
+      "status": "PASS",
+      "message": "JSON Injection properly rejected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:46.347Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_INPUT_VALIDATION",
+      "test": "Large Input input handling",
+      "status": "INFO",
+      "message": "Large Input returned status: 413",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:46.727Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_INPUT_VALIDATION",
+      "test": "Unicode Bypass input validation",
+      "status": "PASS",
+      "message": "Unicode Bypass properly rejected",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:47.048Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_OUTPUT",
+      "test": "Error message security",
+      "status": "PASS",
+      "message": "Error messages properly sanitized",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:47.374Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_OUTPUT",
+      "test": "Server header security",
+      "status": "PASS",
+      "message": "Server information properly hidden",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:47.898Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "API_OUTPUT",
+      "test": "Security headers implementation",
+      "status": "PASS",
+      "message": "Good security headers implementation",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:47.899Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "CORS_SECURITY",
+      "test": "CORS malicious origin acceptance",
+      "status": "FAIL",
+      "message": "CORS accepts malicious origins",
+      "details": "Security vulnerability",
+      "timestamp": "2025-09-30T21:12:48.425Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "CORS_SECURITY",
+      "test": "CORS credentials configuration",
+      "status": "PASS",
+      "message": "CORS credentials properly configured",
+      "details": "",
+      "timestamp": "2025-09-30T21:12:48.434Z"
+    },
+    {
+      "layer": "LAYER 8: API SECURITY",
+      "category": "CORS_SECURITY",
+      "test": "CORS simple request origin validation",
+      "status": "FAIL",
+      "message": "CORS accepts unauthorized origins for simple requests",
+      "details": "Security vulnerability",
+      "timestamp": "2025-09-30T21:12:48.965Z"
+    }
+  ]
+}
