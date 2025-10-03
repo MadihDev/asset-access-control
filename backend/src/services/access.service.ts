@@ -271,7 +271,7 @@ class AccessService {
     ])
 
     return {
-      data: accessLogs as AccessLog[],
+      data: accessLogs as unknown as AccessLog[],
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -469,7 +469,8 @@ class AccessService {
       
       const accessLog = await prisma.accessLog.create({
         data: { 
-          ...data, 
+          ...data,
+          accessType: data.accessType as any, // Cast string to AccessType enum
           cityId: lockCity?.location?.address?.cityId,
           projectCityId: userProjectCityId
         },
@@ -494,7 +495,7 @@ class AccessService {
 
     // Emit WebSocket events to the project-city's room, if projectCityId is known
     try {
-      const projectCityId = accessLog.lock?.location?.address?.projectCityId
+      const projectCityId = userProjectCityId
       if (typeof projectCityId === 'string' && projectCityId.length > 0) {
         const { id, result, accessType, timestamp, userId, rfidKeyId, lockId } = accessLog as any
         const payload = { id, result, accessType, timestamp, userId, rfidKeyId, lockId }
@@ -506,7 +507,7 @@ class AccessService {
       // best-effort only
     }
 
-    return accessLog as AccessLog
+    return accessLog as unknown as AccessLog
   }
 
   private async createAuditLog(data: {

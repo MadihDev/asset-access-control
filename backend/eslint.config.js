@@ -9,9 +9,12 @@ const globals = require('globals')
 /** @type {import('eslint').Linter.FlatConfig[]} */
 module.exports = [
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommended.map(config => ({
+    ...config,
+    files: ['src/**/*.ts', '__tests__/**/*.ts', '*.ts', '**/*.ts'],
+  })),
   {
-    files: ['src/**/*.ts', '__tests__/**/*.ts'],
+    files: ['src/**/*.ts', '__tests__/**/*.ts', '*.ts', '**/*.ts'],
     languageOptions: {
       ecmaVersion: 2022,
       // Use module so TS import/export syntax is parsed correctly
@@ -36,6 +39,23 @@ module.exports = [
           caughtErrorsIgnorePattern: '^_',
         },
       ],
+    },
+  },
+  {
+    files: ['*.js', '**/*.js'],
+    ignores: ['node_modules/**', 'dist/**'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-undef': 'off',
+      '@typescript-eslint/no-var-requires': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
   prettier,

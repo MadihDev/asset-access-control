@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, Request, Response, NextFunction } from 'express'
 import LockController from '../controllers/lock.controller'
 import AccessController from '../controllers/access.controller'
 import { authenticateToken, requireAdmin, requireManagerOrAbove } from '../middleware/auth.middleware'
@@ -19,7 +19,7 @@ const router = Router()
 router.post('/access-attempt', 
   deviceRateLimit(60000, 200), // 200 attempts per minute for devices
   // Optional device authentication - if headers are present, authenticate
-  (req, res, next) => {
+  (req: Request, res: Response, next: NextFunction) => {
     const deviceId = req.headers['x-device-id']
     const secretKey = req.headers['x-device-secret']
     

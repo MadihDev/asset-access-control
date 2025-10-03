@@ -12,7 +12,7 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["src", "prisma", "tests", "test-*.ts"],
-  "exclude": ["node_modules", "dist", "test-tree-quick.ts"],
+  "exclude": ["node_modules", "dist", "test-tree-quick.ts", "test-device-system.ts", "test-twilio-sms.ts"],
   "ts-node": {
     "compilerOptions": {
       "types": ["node", "jest"]

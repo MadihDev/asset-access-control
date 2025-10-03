@@ -20,13 +20,11 @@ class ProjectController {
         const userProjectCity = await prisma.projectCity.findUnique({
           where: { id: effectiveProjectCityId },
           include: { 
-            project: { 
-              where: { isActive: true } 
-            } 
+            project: true
           }
         })
 
-        if (!userProjectCity || !userProjectCity.project) {
+        if (!userProjectCity || !userProjectCity.project || !userProjectCity.project.isActive) {
           return res.status(404).json({ success: false, error: 'No accessible projects found' })
         }
 

@@ -129,7 +129,14 @@ class AuthService {
 
       // Rotate: revoke old, issue new inside a transaction
       const result = await prisma.$transaction(async (tx: any) => {
-        const newToken = await this.issueRefreshToken(user, tx)
+        // Cast user role to match expected type
+        const userForToken = {
+          id: user.id,
+          email: user.email,
+          role: user.role as unknown as UserRole,
+          projectCityId: (user as any).projectCityId
+        }
+        const newToken = await this.issueRefreshToken(userForToken, tx)
         await tx.refreshToken.update({
           where: { jti: payload.jti },
           data: { isRevoked: true, replacedById: newToken.recordId }
@@ -137,7 +144,14 @@ class AuthService {
         return newToken.token
       })
 
-      const newAccessToken = this.generateAccessToken(user)
+      // Cast user role to match expected type for access token
+      const userForAccessToken = {
+        id: user.id,
+        email: user.email,
+        role: user.role as unknown as UserRole,
+        projectCityId: (user as any).projectCityId
+      }
+      const newAccessToken = this.generateAccessToken(userForAccessToken)
       return { accessToken: newAccessToken, refreshToken: result }
     } catch (_error) {
       throw new Error('Invalid refresh token')
@@ -264,6 +278,7 @@ class AuthService {
     const { password: _password, createdById: _createdById, ...rest } = user
     const responseUser: User = {
       ...rest,
+      role: rest.role as unknown as UserRole, // Cast Prisma enum to custom enum
       projectCityId: rest.projectCityId ?? undefined,
       createdAt: rest.createdAt,
       updatedAt: rest.updatedAt,

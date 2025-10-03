@@ -91,7 +91,7 @@ class DeviceMonitoringService {
         }
 
         // Check for low battery alerts
-        if (device.batteryLevel !== null && device.batteryLevel < 20 && device.isOnline) {
+        if (device.batteryLevel !== null && device.batteryLevel !== undefined && device.batteryLevel < 20 && device.isOnline) {
           try {
             if (device.projectCityId) {
               emitToProjectCity(device.projectCityId, 'device:low_battery', {
@@ -100,7 +100,7 @@ class DeviceMonitoringService {
                   deviceId: device.deviceId,
                   name: device.name,
                   batteryLevel: device.batteryLevel,
-                  location: device.location
+                  locationId: device.locationId
                 }
               })
             }
@@ -121,7 +121,7 @@ class DeviceMonitoringService {
                   deviceId: device.deviceId,
                   name: device.name,
                   errorCount: device.errorCount,
-                  location: device.location
+                  locationId: device.locationId
                 }
               })
             }
@@ -172,7 +172,7 @@ class DeviceMonitoringService {
         total: devices.length,
         online: devices.filter(d => d.isOnline).length,
         offline: devices.filter(d => !d.isOnline).length,
-        lowBattery: devices.filter(d => d.batteryLevel !== null && d.batteryLevel < 20).length,
+        lowBattery: devices.filter(d => d.batteryLevel !== null && d.batteryLevel !== undefined && d.batteryLevel < 20).length,
         highErrorCount: devices.filter(d => d.errorCount > 10).length,
         byType: devices.reduce((acc: any, device) => {
           acc[device.deviceType] = (acc[device.deviceType] || 0) + 1

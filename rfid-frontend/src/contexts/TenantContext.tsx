@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { fetchProjects, fetchCitiesByProject, clearTenantCache, type Project, type City } from '../services/tenantApi'
 
 type TenantMode = 'city-only' | 'project-city'

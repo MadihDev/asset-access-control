@@ -314,6 +314,37 @@ class AuthService {
   }
 
   /**
+   * Verify two-factor authentication code
+   */
+  async verifyTwoFactor(request: { twoFactorToken: string; code: string }): Promise<LoginResponse> {
+    try {
+      const response = await this.http.post<LoginResponse>(
+        AUTH_ENDPOINTS.TWO_FACTOR_VERIFY,
+        { 
+          code: request.code,
+          twoFactorToken: request.twoFactorToken
+        }
+      );
+
+      if (response.success && response.data) {
+        const loginData = response.data;
+        
+        // Store tokens and user data after successful 2FA
+        storage.setAccessToken(loginData.accessToken);
+        storage.setRefreshToken(loginData.refreshToken);
+        storage.setUserData(loginData.user);
+
+        return loginData;
+      }
+
+      throw new Error(response.error || '2FA verification failed');
+    } catch (error) {
+      logError(error, '2FA Verification');
+      throw new Error(extractErrorMessage(error));
+    }
+  }
+
+  /**
    * Check server health
    */
   async checkHealth(): Promise<boolean> {

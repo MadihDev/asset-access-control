@@ -277,7 +277,6 @@ class DashboardController {
               id: true,
               name: true,
               isOnline: true,
-              batteryLevel: true,
               _count: {
                 select: {
                   permissions: true
@@ -339,8 +338,8 @@ class DashboardController {
               },
               canAccess: true,
               OR: [
-                { expiresAt: null },
-                { expiresAt: { gt: new Date() } }
+                { validTo: null },
+                { validTo: { gt: new Date() } }
               ]
             }
           })

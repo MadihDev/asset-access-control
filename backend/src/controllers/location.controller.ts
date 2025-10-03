@@ -99,7 +99,7 @@ class LocationController {
       const pageIds = selectedIds.slice(offset, offset + limit)
 
       type SlimUser = { id: string; firstName: string; lastName: string; email: string; role: UserRole; rfidKeys: any[] }
-      const users: SlimUser[] = pageIds.length
+      const usersFromDb = pageIds.length
         ? await prisma.user.findMany({
             where: { id: { in: pageIds } },
             select: { 
@@ -118,7 +118,13 @@ class LocationController {
               }
             },
           })
-        : ([] as SlimUser[])
+        : []
+
+      // Map users to cast role type properly
+      const users: SlimUser[] = usersFromDb.map(user => ({
+        ...user,
+        role: user.role as unknown as UserRole
+      }))
 
       // Sort by lastName, firstName ascending for readability
       users.sort((a: SlimUser, b: SlimUser) => {
@@ -431,7 +437,7 @@ class LocationController {
         return true
       })
 
-      await prisma.$transaction(async (tx: typeof prisma) => {
+      await prisma.$transaction(async (tx) => {
         // Process grants (upsert/update semantics on userId+lockId)
         for (const g of uniqGrants) {
           const validFrom = g.validFrom ? new Date(g.validFrom) : now
@@ -463,11 +469,13 @@ class LocationController {
       })
 
       // Emit realtime event to project-city listeners
-      emitToProjectCity(address.projectCityId, 'location:permissions:changed', {
-        addressId,
-        counts: results,
-        ts: new Date().toISOString(),
-      })
+      if (address.projectCityId) {
+        emitToProjectCity(address.projectCityId, 'location:permissions:changed', {
+          addressId,
+          counts: results,
+          ts: new Date().toISOString(),
+        })
+      }
 
       return res.status(200).json({ success: true, data: results })
     } catch (err) {
@@ -531,7 +539,7 @@ class LocationController {
 
       const summary = { created: 0, reassigned: 0, updated: 0 }
 
-      await prisma.$transaction(async (tx: typeof prisma) => {
+      await prisma.$transaction(async (tx) => {
         // Dedupe by cardId to avoid double-processing
         const seen = new Set<string>()
         for (const it of items) {
@@ -569,11 +577,13 @@ class LocationController {
       })
 
       // Emit realtime event to project-city listeners
-      emitToProjectCity(address.projectCityId, 'location:keys:changed', {
-        addressId,
-        counts: summary,
-        ts: new Date().toISOString(),
-      })
+      if (address.projectCityId) {
+        emitToProjectCity(address.projectCityId, 'location:keys:changed', {
+          addressId,
+          counts: summary,
+          ts: new Date().toISOString(),
+        })
+      }
 
       return res.status(200).json({ success: true, data: summary })
     } catch (err) {

@@ -23,7 +23,7 @@ class RFIDService {
       }, 
       orderBy: { issuedAt: 'desc' } 
     })
-    return keys as RFIDKey[]
+    return keys as unknown as RFIDKey[]
   }
 
   async create(data: CreateRFIDKeyRequest): Promise<RFIDKey> {
@@ -63,12 +63,12 @@ class RFIDService {
         projectCityId: user.projectCityId 
       } 
     })
-    return created as RFIDKey
+    return created as unknown as RFIDKey
   }
 
   async update(id: string, patch: Partial<Pick<RFIDKey, 'name' | 'isActive' | 'expiresAt'>>): Promise<RFIDKey> {
     const updated = await prisma.rFIDKey.update({ where: { id }, data: patch })
-    return updated as RFIDKey
+    return updated as unknown as RFIDKey
   }
 }
 

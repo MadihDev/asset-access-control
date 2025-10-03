@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -41,8 +41,7 @@ async function createAlphanumericDemoData() {
       data: {
         id: 'proj1',
         name: 'TechCorp Solutions',
-        slug: 'techcorp',
-        description: 'Advanced technology solutions company'
+        slug: 'techcorp'
       }
     });
 
@@ -50,8 +49,7 @@ async function createAlphanumericDemoData() {
       data: {
         id: 'proj2',
         name: 'SafeAccess Ltd',
-        slug: 'safeaccess', 
-        description: 'Security and access control systems'
+        slug: 'safeaccess'
       }
     });
 
@@ -59,8 +57,7 @@ async function createAlphanumericDemoData() {
       data: {
         id: 'proj3',
         name: 'PerfectIT Solutions',
-        slug: 'perfectit',
-        description: 'Complete IT infrastructure solutions'
+        slug: 'perfectit'
       }
     });
 
@@ -120,7 +117,7 @@ async function createAlphanumericDemoData() {
       }
     });
 
-    const techcorpUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
         username: 'techcorpuser',   // NO UNDERSCORE
         email: 'user@techcorp.com',
@@ -148,7 +145,7 @@ async function createAlphanumericDemoData() {
     });
 
     // PerfectIT Users
-    const perfectitAmsterdamAdmin = await prisma.user.create({
+    await prisma.user.create({
       data: {
         username: 'perfectitadmin', // NO UNDERSCORE
         email: 'admin@perfectit.com',
@@ -161,7 +158,7 @@ async function createAlphanumericDemoData() {
       }
     });
 
-    const perfectitUtrechtUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
         username: 'perfectituser',  // NO UNDERSCORE
         email: 'user@perfectit.com', 
@@ -180,19 +177,21 @@ async function createAlphanumericDemoData() {
     console.log('🏠 Creating addresses...');
     const address1 = await prisma.address.create({
       data: {
-        street: 'Damrak 123',
-        city: 'Amsterdam',
-        postalCode: '1012 AB',
-        country: 'Netherlands'
+        street: 'Damrak',
+        number: '123',
+        zipCode: '1012 AB',
+        cityId: amsterdam.id,
+        projectCityId: techcorpAmsterdam.id
       }
     });
 
     const address2 = await prisma.address.create({
       data: {
-        street: 'Coolsingel 456', 
-        city: 'Rotterdam',
-        postalCode: '3011 AB',
-        country: 'Netherlands'
+        street: 'Coolsingel',
+        number: '456',
+        zipCode: '3011 AB',
+        cityId: rotterdam.id,
+        projectCityId: safeaccessRotterdam.id
       }
     });
 
@@ -226,7 +225,10 @@ async function createAlphanumericDemoData() {
       data: {
         name: 'Main Entrance',
         description: 'Main building entrance lock',
+        deviceId: 'DEV001',
+        secretKey: 'secret123',
         locationId: location1.id,
+        projectCityId: techcorpAmsterdam.id,
         isActive: true
       }
     });
@@ -235,7 +237,10 @@ async function createAlphanumericDemoData() {
       data: {
         name: 'Server Room',
         description: 'Secure server room access',
+        deviceId: 'DEV002',
+        secretKey: 'secret456',
         locationId: location2.id,
+        projectCityId: safeaccessRotterdam.id,
         isActive: true
       }
     });
@@ -246,19 +251,21 @@ async function createAlphanumericDemoData() {
     console.log('🔑 Creating RFID keys...');
     await prisma.rFIDKey.create({
       data: {
-        keyId: 'RFID001',
+        cardId: 'RFID001',
+        name: 'TechCorp Admin Key Card',
         userId: techcorpAdmin.id,
-        isActive: true,
-        description: 'TechCorp Admin Key Card'
+        projectCityId: techcorpAmsterdam.id,
+        isActive: true
       }
     });
 
     await prisma.rFIDKey.create({
       data: {
-        keyId: 'RFID002', 
+        cardId: 'RFID002',
+        name: 'SafeAccess Admin Key Card',
         userId: safeaccessAdmin.id,
-        isActive: true,
-        description: 'SafeAccess Admin Key Card'
+        projectCityId: safeaccessRotterdam.id,
+        isActive: true
       }
     });
 
@@ -268,16 +275,18 @@ async function createAlphanumericDemoData() {
     console.log('📋 Creating initial audit logs...');
     await prisma.auditLog.create({
       data: {
-        action: 'USER_CREATED',
-        userId: techcorpAdmin.id,
-        details: 'Demo user created during setup'
+        action: 'CREATE',
+        entityType: 'User',
+        entityId: techcorpAdmin.id,
+        userId: techcorpAdmin.id
       }
     });
 
     await prisma.auditLog.create({
       data: {
-        action: 'SYSTEM_SETUP',
-        details: 'Demo data initialization completed'
+        action: 'CREATE',
+        entityType: 'System',
+        entityId: 'demo-setup'
       }
     });
 
