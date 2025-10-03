@@ -121,6 +121,9 @@ const Locations: React.FC = () => {
   const [locks, setLocks] = useState<Lock[]>([])
   const [rfidKeys, setRfidKeys] = useState<RfidKey[]>([])
   
+  // Track which tabs have been loaded for the current location
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set())
+  
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('')
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
@@ -216,6 +219,10 @@ const Locations: React.FC = () => {
         console.log('✅ RFID Keys received:', data)
         setRfidKeys(data.data || [])
       }
+      
+      // Mark this tab as loaded for this location
+      setLoadedTabs(prev => new Set(prev).add(`${location.id}-${tab}`))
+      
     } catch (err) {
       const error = err as AxiosError<{ error?: string }>
       console.error(`❌ Error fetching ${tab}:`, error)
@@ -242,6 +249,8 @@ const Locations: React.FC = () => {
     setUsers([])
     setLocks([])
     setRfidKeys([])
+    // Clear loaded tabs tracking
+    setLoadedTabs(new Set())
   }
 
   const handleTabChange = (tab: 'users' | 'locks' | 'keys') => {
@@ -529,7 +538,7 @@ const Locations: React.FC = () => {
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        Users{detailLoading && activeTab === 'users' && <span className="ml-1 text-xs">⟳</span>}
+                        Users ({selectedLocation && loadedTabs.has(`${selectedLocation.id}-users`) ? users?.length || 0 : '?'}){detailLoading && activeTab === 'users' && <span className="ml-1 text-xs">⟳</span>}
                       </div>
                     </button>
                     <button
@@ -559,7 +568,7 @@ const Locations: React.FC = () => {
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a1.994 1.994 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
-                        Keys{detailLoading && activeTab === 'keys' && <span className="ml-1 text-xs">⟳</span>}
+                        Keys ({selectedLocation && loadedTabs.has(`${selectedLocation.id}-keys`) ? rfidKeys?.length || 0 : '?'}){detailLoading && activeTab === 'keys' && <span className="ml-1 text-xs">⟳</span>}
                       </div>
                     </button>
                   </nav>
