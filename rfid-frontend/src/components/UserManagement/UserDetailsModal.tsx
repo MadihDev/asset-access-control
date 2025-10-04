@@ -43,11 +43,15 @@ interface Lock {
   name: string
   lockType?: string
   isActive: boolean
-  address?: {
-    street?: string
-    number?: string
-    city?: {
-      name: string
+  location?: {
+    id: string
+    name: string
+    address?: {
+      street?: string
+      number?: string
+      city?: {
+        name: string
+      }
     }
   }
 }
@@ -586,8 +590,8 @@ export default function UserDetailsModal({ user, onClose, onSuccess, currentUser
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{permission.lock.name}</div>
                         <div className="text-sm text-gray-500">
-                          {permission.lock.address?.street} {permission.lock.address?.number}
-                          {permission.lock.address?.city?.name && ` • ${permission.lock.address.city.name}`}
+                          {permission.lock.location?.address?.street} {permission.lock.location?.address?.number}
+                          {permission.lock.location?.address?.city?.name && ` • ${permission.lock.location.address.city.name}`}
                         </div>
                         <div className="text-xs text-gray-400">
                           Granted {formatDate(permission.grantedAt)}
@@ -649,8 +653,8 @@ export default function UserDetailsModal({ user, onClose, onSuccess, currentUser
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{lock.name}</div>
                         <div className="text-sm text-gray-500">
-                          {lock.address?.street} {lock.address?.number}
-                          {lock.address?.city?.name && ` • ${lock.address.city.name}`}
+                          {lock.location?.address?.street} {lock.location?.address?.number}
+                          {lock.location?.address?.city?.name && ` • ${lock.location.address.city.name}`}
                         </div>
                         {lock.lockType && (
                           <div className="text-xs text-gray-400">{lock.lockType}</div>
