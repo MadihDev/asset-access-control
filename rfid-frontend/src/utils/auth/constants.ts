@@ -38,12 +38,12 @@ export const VALIDATION_RULES = {
     PATTERN: /^[a-zA-Z0-9_.-]+$/,
   },
   PASSWORD: {
-    MIN_LENGTH: 8,
+    MIN_LENGTH: 1,
     MAX_LENGTH: 128,
-    REQUIRE_UPPERCASE: true,
-    REQUIRE_LOWERCASE: true,
-    REQUIRE_NUMBER: true,
-    REQUIRE_SPECIAL: true,
+    REQUIRE_UPPERCASE: false,
+    REQUIRE_LOWERCASE: false,
+    REQUIRE_NUMBER: false,
+    REQUIRE_SPECIAL: false,
     SPECIAL_CHARS: '!@#$%^&*(),.?":{}|<>',
   },
   TWO_FACTOR_CODE: {
@@ -56,7 +56,7 @@ export const VALIDATION_RULES = {
 export const ERROR_MESSAGES = {
   REQUIRED_FIELD: 'This field is required',
   INVALID_USERNAME: 'Username must be 3-50 characters and contain only letters, numbers, dots, hyphens, and underscores',
-  INVALID_PASSWORD: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character',
+  INVALID_PASSWORD: 'Password is required',
   INVALID_TWO_FACTOR_CODE: 'Two-factor code must be exactly 6 digits',
   NETWORK_ERROR: 'Network error. Please check your connection.',
   SERVER_ERROR: 'Server error. Please try again later.',

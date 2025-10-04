@@ -46,26 +46,6 @@ export const validatePassword = (password: string): string | null => {
     return ERROR_MESSAGES.INVALID_PASSWORD;
   }
 
-  if (VALIDATION_RULES.PASSWORD.REQUIRE_UPPERCASE && !/[A-Z]/.test(password)) {
-    return ERROR_MESSAGES.INVALID_PASSWORD;
-  }
-
-  if (VALIDATION_RULES.PASSWORD.REQUIRE_LOWERCASE && !/[a-z]/.test(password)) {
-    return ERROR_MESSAGES.INVALID_PASSWORD;
-  }
-
-  if (VALIDATION_RULES.PASSWORD.REQUIRE_NUMBER && !/\d/.test(password)) {
-    return ERROR_MESSAGES.INVALID_PASSWORD;
-  }
-
-  if (VALIDATION_RULES.PASSWORD.REQUIRE_SPECIAL) {
-    const specialChars = VALIDATION_RULES.PASSWORD.SPECIAL_CHARS;
-    const hasSpecial = specialChars.split('').some(char => password.includes(char));
-    if (!hasSpecial) {
-      return ERROR_MESSAGES.INVALID_PASSWORD;
-    }
-  }
-
   return null;
 };
 

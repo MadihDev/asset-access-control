@@ -96,13 +96,8 @@ export default function CreateUserModal({ onClose, onSuccess, currentUser }: Cre
     }
 
     // Password validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
     if (!formData.password.trim()) {
       newErrors.password = 'Password is required'
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters long'
-    } else if (!passwordRegex.test(formData.password)) {
-      newErrors.password = 'Password must contain at least one uppercase letter, lowercase letter, number, and special character (@$!%*?&)'
     }
 
     // Role validation
@@ -305,7 +300,7 @@ export default function CreateUserModal({ onClose, onSuccess, currentUser }: Cre
             <p className="mt-1 text-xs text-red-600">{errors.password}</p>
           )}
           <p className="mt-1 text-xs text-gray-500">
-            At least 8 characters with uppercase, lowercase, number, and special character (@$!%*?&)
+            Enter a password for the user
           </p>
         </div>
 

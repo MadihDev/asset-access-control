@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import Login from './components/Login'
+import Login from './components/Auth/Login/Login'
 import Dashboard from './components/Dashboard'
 import Navigation from './components/Navigation'
 import UserManagement from './components/UserManagement'

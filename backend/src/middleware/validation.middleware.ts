@@ -56,10 +56,8 @@ export const validatePasswordChange = [
     .notEmpty()
     .withMessage('Current password is required'),
   body('newPassword')
-    .isLength({ min: 8 })
-    .withMessage('New password must be at least 8 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-    .withMessage('New password must contain at least one lowercase letter, one uppercase letter, one number, and one special character'),
+    .isLength({ min: 1 })
+    .withMessage('New password is required'),
   handleValidationErrors
 ]
 
@@ -91,10 +89,8 @@ export const validateCreateUser = [
     .withMessage('Last name is required and must be less than 100 characters')
     .trim(),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-    .withMessage('Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character'),
+    .isLength({ min: 1 })
+    .withMessage('Password is required'),
   body('role')
     .optional()
     .isIn(Object.values(UserRole))

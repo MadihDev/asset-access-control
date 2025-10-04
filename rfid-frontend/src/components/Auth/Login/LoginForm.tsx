@@ -1,10 +1,10 @@
 /**
  * Login Form Component
  * Contains the form fields and handles form submission
+ * Updated with modern glassmorphism design
  */
 
 import React from 'react';
-import { LoginField, LoginSelectField, LoginButton } from './LoginFields';
 
 import type { LoginFormData, LoginValidationErrors, City } from '../../../types/auth';
 
@@ -41,7 +41,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   return (
     <form 
-      className="mt-8 space-y-6" 
       onSubmit={onSubmit}
       noValidate
       aria-labelledby="login-heading"
@@ -55,13 +54,23 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       {error && (
         <div 
           role="alert"
-          className="rounded-md bg-red-50 p-4 border border-red-200"
+          className="form-field error-message"
           aria-live="polite"
+          style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '12px',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            backdropFilter: 'blur(10px)',
+            color: 'rgba(255, 255, 255, 0.95)'
+          }}
         >
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg 
-                className="h-5 w-5 text-red-400" 
+                className="h-5 w-5" 
+                style={{ color: 'rgba(239, 68, 68, 0.8)' }}
                 viewBox="0 0 20 20" 
                 fill="currentColor"
                 aria-hidden="true"
@@ -74,16 +83,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               </svg>
             </div>
             <div className="ml-3 flex-1">
-              <p className="text-sm text-red-800">
+              <p style={{ fontSize: '0.875rem', margin: 0 }}>
                 {error}
               </p>
             </div>
             <div className="ml-auto pl-3">
               <button
                 type="button"
-                className="inline-flex rounded-md bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50"
                 onClick={onClearError}
                 aria-label="Dismiss error"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '8px',
+                  padding: '0.375rem',
+                  color: 'rgba(239, 68, 68, 0.8)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
               >
                 <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -95,78 +112,111 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       )}
 
       {/* Form Fields */}
-      <div className="space-y-4">
+      <div>
         
         {/* Project Field */}
-        <LoginField
-          id="project"
-          name="project"
-          type="text"
-          value={formData.project}
-          label="Project Name"
-          placeholder="Enter project name"
-          error={validationErrors.project}
-          required
-          disabled={isLoading}
-          onChange={(value: string) => onProjectChange(value)}
-        />
+        <div className="form-field">
+          <input
+            id="project"
+            name="project"
+            type="text"
+            value={formData.project}
+            placeholder="Enter project name"
+            required
+            disabled={isLoading}
+            aria-invalid={validationErrors.project ? 'true' : 'false'}
+            aria-describedby={validationErrors.project ? 'project-error' : undefined}
+            onChange={(e) => onProjectChange(e.target.value)}
+          />
+          {validationErrors.project && (
+            <div id="project-error" className="error-text" style={{ color: 'rgba(239, 68, 68, 0.8)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+              {validationErrors.project}
+            </div>
+          )}
+        </div>
 
         {/* City Field */}
-        <LoginSelectField
-          id="city"
-          name="city"
-          value={formData.city}
-          label="City"
-          placeholder={
-            isLoadingCities 
-              ? "Loading cities..." 
-              : !formData.project 
-                ? "Select a project first" 
-                : filteredCities.length === 0 
-                  ? "No cities available" 
-                  : "Select a city"
-          }
-          error={validationErrors.city}
-          required
-          disabled={isLoading || isLoadingCities || !formData.project || filteredCities.length === 0}
-          options={cityOptions}
-          onChange={(value: string) => onFieldChange('city', value)}
-        />
+        <div className="form-field">
+          <select
+            id="city"
+            name="city"
+            value={formData.city}
+            required
+            disabled={isLoading || isLoadingCities || !formData.project || filteredCities.length === 0}
+            aria-invalid={validationErrors.city ? 'true' : 'false'}
+            aria-describedby={validationErrors.city ? 'city-error' : undefined}
+            onChange={(e) => onFieldChange('city', e.target.value)}
+          >
+            <option value="" disabled>
+              {isLoadingCities 
+                ? "Loading cities..." 
+                : !formData.project 
+                  ? "Select a project first" 
+                  : filteredCities.length === 0 
+                    ? "No cities available" 
+                    : "Select a city"}
+            </option>
+            {cityOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {validationErrors.city && (
+            <div id="city-error" className="error-text" style={{ color: 'rgba(239, 68, 68, 0.8)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+              {validationErrors.city}
+            </div>
+          )}
+        </div>
 
         {/* Username Field */}
-        <LoginField
-          id="username"
-          name="username"
-          type="text"
-          value={formData.username}
-          label="Username"
-          placeholder="Enter your username"
-          error={validationErrors.username}
-          required
-          disabled={isLoading}
-          autoComplete="username"
-          onChange={(value: string) => onFieldChange('username', value)}
-        />
+        <div className="form-field">
+          <input
+            id="username"
+            name="username"
+            type="text"
+            value={formData.username}
+            placeholder="Enter your username"
+            required
+            disabled={isLoading}
+            autoComplete="username"
+            aria-invalid={validationErrors.username ? 'true' : 'false'}
+            aria-describedby={validationErrors.username ? 'username-error' : undefined}
+            onChange={(e) => onFieldChange('username', e.target.value)}
+          />
+          {validationErrors.username && (
+            <div id="username-error" className="error-text" style={{ color: 'rgba(239, 68, 68, 0.8)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+              {validationErrors.username}
+            </div>
+          )}
+        </div>
 
         {/* Password Field */}
-        <LoginField
-          id="password"
-          name="password"
-          type="password"
-          value={formData.password}
-          label="Password"
-          placeholder="Enter your password"
-          error={validationErrors.password}
-          required
-          disabled={isLoading}
-          autoComplete="current-password"
-          onChange={(value: string) => onFieldChange('password', value)}
-        />
+        <div className="form-field">
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={formData.password}
+            placeholder="Enter your password"
+            required
+            disabled={isLoading}
+            autoComplete="current-password"
+            aria-invalid={validationErrors.password ? 'true' : 'false'}
+            aria-describedby={validationErrors.password ? 'password-error' : undefined}
+            onChange={(e) => onFieldChange('password', e.target.value)}
+          />
+          {validationErrors.password && (
+            <div id="password-error" className="error-text" style={{ color: 'rgba(239, 68, 68, 0.8)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+              {validationErrors.password}
+            </div>
+          )}
+        </div>
 
       </div>
 
       {/* Remember Me Checkbox */}
-      <div className="flex items-center justify-between">
+      <div className="form-field" style={{ marginBottom: '2rem' }}>
         <div className="flex items-center">
           <input
             id="remember-me"
@@ -175,12 +225,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             checked={formData.rememberMe}
             onChange={(e) => onFieldChange('rememberMe', e.target.checked)}
             disabled={isLoading}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+            style={{
+              width: '1rem',
+              height: '1rem',
+              accentColor: '#3B82F6',
+              marginRight: '0.75rem'
+            }}
             aria-describedby="remember-me-description"
           />
           <label 
             htmlFor="remember-me" 
-            className="ml-2 block text-sm text-gray-700 cursor-pointer"
+            style={{
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}
           >
             Remember me
           </label>
@@ -194,22 +254,46 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       </div>
 
       {/* Submit Button */}
-      <div>
-        <LoginButton
+      <div className="form-field">
+        <button
           type="submit"
           disabled={isLoading}
-          loading={isLoading}
-          className="group relative w-full"
+          style={{
+            width: '100%',
+            padding: '1rem',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            borderRadius: '12px',
+            color: 'white',
+            fontSize: '1.1rem',
+            fontWeight: '600',
+            letterSpacing: '0.025em',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+            position: 'relative',
+            overflow: 'hidden',
+            opacity: isLoading ? 0.7 : 1
+          }}
         >
+          {isLoading && (
+            <svg 
+              className="animate-spin" 
+              style={{ 
+                width: '1.25rem', 
+                height: '1.25rem', 
+                marginRight: '0.5rem',
+                display: 'inline-block'
+              }} 
+              fill="none" 
+              viewBox="0 0 24 24"
+            >
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          )}
           {isLoading ? 'Signing in...' : 'Sign in'}
-        </LoginButton>
-      </div>
-
-      {/* Additional Info */}
-      <div className="text-center text-sm text-gray-600">
-        <p>
-          Need help? Contact your system administrator.
-        </p>
+        </button>
       </div>
     </form>
   );
