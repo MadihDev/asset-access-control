@@ -14,13 +14,18 @@ interface Lock {
   isOnline?: boolean
   lastSeen?: string
   projectCityId: string
-  address?: {
-    street?: string
-    number?: string
-    zipCode?: string
-    city?: {
-      id: string
-      name: string
+  location?: {
+    id: string
+    name: string
+    description?: string
+    address?: {
+      street?: string
+      number?: string
+      zipCode?: string
+      city?: {
+        id: string
+        name: string
+      }
     }
   }
 }
@@ -101,20 +106,20 @@ export default function Locks({ user }: LocksProps) {
     }
   })
 
-  const allLocks = locksData?.data || []
   const isLoaderActive = isLoading || isFetching
 
   // Filter locks based on search term
   const locks = useMemo(() => {
+    const allLocks = locksData?.data || []
     if (!searchTerm) return allLocks;
     
     return allLocks.filter((lock: Lock) =>
       lock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lock.lockType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lock.address?.city?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lock.address?.street?.toLowerCase().includes(searchTerm.toLowerCase())
+      lock.location?.address?.city?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lock.location?.address?.street?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [allLocks, searchTerm])
+  }, [locksData?.data, searchTerm])
 
   const formatLastSeen = (lastSeen?: string) => {
     if (!lastSeen) return 'Never'
@@ -302,12 +307,12 @@ export default function Locks({ user }: LocksProps) {
                       {/* Location */}
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">
-                          {lock.address?.city?.name || 'Unknown City'}
+                          {lock.location?.address?.city?.name || 'Unknown City'}
                         </div>
-                        {lock.address && (
+                        {lock.location?.address && (
                           <div className="text-sm text-gray-500">
-                            {[lock.address.street, lock.address.number].filter(Boolean).join(' ')}
-                            {lock.address.zipCode && ` (${lock.address.zipCode})`}
+                            {[lock.location.address.street, lock.location.address.number].filter(Boolean).join(' ')}
+                            {lock.location.address.zipCode && ` (${lock.location.address.zipCode})`}
                           </div>
                         )}
                       </td>
