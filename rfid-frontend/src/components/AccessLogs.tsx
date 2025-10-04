@@ -13,11 +13,13 @@ interface AccessLog {
   } | null
   lock: {
     name: string
-    address?: {
-      street?: string
-      number?: string
-      city?: {
-        name: string
+    location?: {
+      address?: {
+        street?: string
+        number?: string
+        city?: {
+          name: string
+        }
       }
     }
   }
@@ -110,8 +112,8 @@ const AccessLogs: React.FC = () => {
         new Date(log.timestamp).toLocaleString(),
         log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() : 'Unknown',
         log.lock.name,
-        log.lock.address ? `${log.lock.address.street || ''} ${log.lock.address.number || ''}`.trim() : 'N/A',
-        log.lock.address?.city?.name || 'N/A',
+        log.lock.location?.address ? `${log.lock.location.address.street || ''} ${log.lock.location.address.number || ''}`.trim() : 'N/A',
+        log.lock.location?.address?.city?.name || 'N/A',
         log.accessType.replace(/_/g, ' '),
         log.result.replace(/_/g, ' '),
         log.rfidKey?.cardId || 'N/A'
@@ -384,7 +386,7 @@ const AccessLogs: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                           <div className="text-sm text-gray-900">
-                            {log.lock.address ? `${log.lock.address.street || ''} ${log.lock.address.number || ''}`.trim() : 'N/A'}
+                            {log.lock.location?.address ? `${log.lock.location.address.street || ''} ${log.lock.location.address.number || ''}`.trim() : 'N/A'}
                           </div>
                         </div>
                       </td>
@@ -393,7 +395,7 @@ const AccessLogs: React.FC = () => {
                           <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                           </svg>
-                          <div className="text-sm text-gray-900">{log.lock.address?.city?.name || 'N/A'}</div>
+                          <div className="text-sm text-gray-900">{log.lock.location?.address?.city?.name || 'N/A'}</div>
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">

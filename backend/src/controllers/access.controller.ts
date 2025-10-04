@@ -145,8 +145,8 @@ class AccessController {
         log.user ? `${log.user.firstName} ${log.user.lastName}` : 'Unknown',
         log.user?.email || 'Unknown',
         log.lock.name,
-        `${log.lock.address.street} ${log.lock.address.number}`,
-        log.lock.address.city.name,
+        `${log.lock.location?.address?.street || ''} ${log.lock.location?.address?.number || ''}`.trim() || 'N/A',
+        log.lock.location?.address?.city?.name || 'N/A',
         log.accessType,
         log.result,
         log.rfidKey?.cardId || 'Unknown'
